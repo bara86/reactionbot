@@ -128,46 +128,20 @@ func handle(w http.ResponseWriter, req *http.Request) {
 
 	w.Write([]byte("GnocchettiAlVapore"))
 
-	// var ch message
+}
 
-	// data.ReadFrom(req.Body)
-	// fmt.Println("Challenge", req.Body)
-	// json.Unmarshal(data.Bytes(), &ch)
+func handleActions(w http.ResponseWriter, req *http.Request) {
+	type messageType struct {
+		Type string `json:"type"`
+	}
 
-	// fmt.Println("type", ch.Type, ch.EventID, ch.Event.Type)
+	// var data bytes.Buffer
+	var messagetype messageType
+	payload := req.FormValue("payload")
 
-	// resp := response{Token: "xoxp-2362083804-80850956512-395538191665-32b66e7481ebf4010d601397969d5528", Name: "thumbsup", Timestamp: ch.Event.Ts, Channel: ch.Event.Channel}
+	json.Unmarshal([]byte(payload), &messagetype)
 
-	// client := http.Client{}
-
-	// marshalled, _ := json.Marshal(resp)
-	// fmt.Println(string(marshalled))
-	// writer := bytes.NewBuffer(marshalled)
-
-	// request, erro := http.NewRequest("POST", "https://slack.com/api/reactions.add", writer)
-
-	// if erro != nil {
-	// 	fmt.Println("Error creating request")
-	// 	return
-	// }
-
-	// // Add Authorization token
-	// request.Header.Add("Authorization", "Bearer xoxp-2362083804-80850956512-395538191665-32b66e7481ebf4010d601397969d5528")
-	// request.Header.Add("Content-type", "application/json")
-
-	// clientResponse, clientError := client.Do(request)
-
-	// if clientError != nil {
-	// 	fmt.Println("Errore dal client")
-	// } else {
-	// 	data.Reset()
-	// 	data.ReadFrom(clientResponse.Body)
-	// 	var respbello responsebello
-	// 	json.Unmarshal(data.Bytes(), &respbello)
-
-	// 	fmt.Println("ClientResponse", respbello)
-	// }
-
+	w.Write([]byte("GnocchettiAlVapore"))
 }
 
 func main() {
@@ -178,5 +152,6 @@ func main() {
 	}
 
 	http.HandleFunc("/", handle)
+	http.HandleFunc("/actions", handleActions)
 	http.ListenAndServe(":8008", nil)
 }
