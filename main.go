@@ -39,6 +39,20 @@ type responsebello struct {
 	Err string `json:"error"`
 }
 
+type channel struct {
+	ID string `json:"id"`
+}
+
+type addReactionActionMessage struct {
+	Timestamp string `json:"ts"`
+}
+
+type addReactionAction struct {
+	ResponseURL string                   `json:"response_url"`
+	Channel     channel                  `json:"channel"`
+	Message     addReactionActionMessage `json:"message"`
+}
+
 func handleURLVerification(data *bytes.Buffer, w http.ResponseWriter) {
 	type urlVerification struct {
 		Token     string
@@ -58,11 +72,11 @@ func handleURLVerification(data *bytes.Buffer, w http.ResponseWriter) {
 	w.Write([]byte(urlverification.Challenge))
 }
 
-func addReaction(msg *message) {
+func addReaction(reactionName string, timestamp string, channel string) {
 
 	oauthToken := os.Getenv("SLACK_OAUTH_TOKEN")
 
-	resp := response{Token: oauthToken, Name: "thumbsup", Timestamp: msg.Event.Ts, Channel: msg.Event.Channel}
+	resp := response{Token: oauthToken, Name: reactionName, Timestamp: timestamp, Channel: channel}
 	client := http.Client{}
 
 	marshalled, _ := json.Marshal(resp)
@@ -101,7 +115,7 @@ func handleEvent(data *bytes.Buffer) {
 	json.Unmarshal(data.Bytes(), &msg)
 
 	if msg.Event.Type == "message" {
-		go addReaction(&msg)
+		go addReaction("thumbsup", msg.Event.Ts, msg.Event.Channel)
 	}
 }
 
@@ -130,16 +144,29 @@ func handle(w http.ResponseWriter, req *http.Request) {
 
 }
 
+func addReactionToMessage(payload *string) {
+
+	var addReactionActionMessage addReactionAction
+	json.Unmarshal([]byte(*payload), &addReactionActionMessage)
+
+	addReaction("heart", addReactionActionMessage.Message.Timestamp, addReactionActionMessage.Channel.ID)
+}
+
 func handleActions(w http.ResponseWriter, req *http.Request) {
-	type messageType struct {
-		Type string `json:"type"`
+	type callbackID struct {
+		CallbackID string `json:"callback_id"`
 	}
 
-	// var data bytes.Buffer
-	var messagetype messageType
+	var callbackid callbackID
 	payload := req.FormValue("payload")
 
-	json.Unmarshal([]byte(payload), &messagetype)
+	json.Unmarshal([]byte(payload), &callbackid)
+
+	if callbackid.CallbackID == "add_reaction_to_message" {
+		go addReactionToMessage(&payload)
+	} else {
+		fmt.Printf("Error: Unhandled action `%s`", callbackid.CallbackID)
+	}
 
 	w.Write([]byte("GnocchettiAlVapore"))
 }
