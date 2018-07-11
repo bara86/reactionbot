@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 
@@ -86,6 +87,37 @@ func handleURLVerification(data *bytes.Buffer, w http.ResponseWriter) {
 	}
 
 	w.Write([]byte(urlverification.Challenge))
+}
+
+func postToSlack(url string, w io.Reader) (*http.Response, error) {
+	request, erro := http.NewRequest(http.MethodPost, slackAddReactionURL, w)
+
+	if erro != nil {
+		fmt.Println("Error creating request")
+		return &http.Response{}, erro
+	}
+
+	// Add Authorization token
+	request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", getOauthToken()))
+	request.Header.Add("Content-type", "application/json")
+
+	client := http.Client{}
+	clientResponse, clientError := client.Do(request)
+
+	if clientError != nil {
+		fmt.Println("Errore dal client")
+	} else {
+		var data bytes.Buffer
+		var clientRespData clientResponseData
+
+		data.ReadFrom(clientResponse.Body)
+		json.Unmarshal(data.Bytes(), &clientRespData)
+
+		if !clientRespData.Ok {
+			fmt.Println("Error send HTTP post request to Slack:", clientRespData.Err)
+		}
+	}
+	return clientResponse, clientError
 }
 
 func addReaction(reactionName string, timestamp string, channel string) {
