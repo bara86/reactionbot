@@ -192,7 +192,7 @@ func main() {
 	err := godotenv.Load()
 
 	if err != nil {
-		panic("Missing dotenv file")
+		fmt.Println("Missing .env file")
 	}
 
 	fmt.Println("Ready to react!!1!")
