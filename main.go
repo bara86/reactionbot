@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
@@ -53,6 +54,20 @@ type addReactionAction struct {
 	Message     addReactionActionMessage `json:"message"`
 }
 
+var asUser *bool
+
+const slackTokenEnv = "SLACK_TOKEN"
+const slackOauthBotToken = "SLACK_OAUTH_BOT_TOKEN"
+const slackOauthUserToken = "SLACK_OAUTH_USER_TOKEN"
+const slackAddReactionURL = "https://slack.com/api/reactions.add"
+
+func getOauthToken() string {
+	if !*asUser {
+		return os.Getenv(slackOauthBotToken)
+	}
+	return os.Getenv(slackOauthUserToken)
+}
+
 func handleURLVerification(data *bytes.Buffer, w http.ResponseWriter) {
 	type urlVerification struct {
 		Token     string
@@ -62,7 +77,7 @@ func handleURLVerification(data *bytes.Buffer, w http.ResponseWriter) {
 	var urlverification urlVerification
 	json.Unmarshal(data.Bytes(), &urlverification)
 
-	slackToken := os.Getenv("SLACK_TOKEN")
+	slackToken := os.Getenv(slackTokenEnv)
 
 	if slackToken != urlverification.Token {
 		http.Error(w, "Unauthorized", http.StatusBadRequest)
@@ -74,7 +89,7 @@ func handleURLVerification(data *bytes.Buffer, w http.ResponseWriter) {
 
 func addReaction(reactionName string, timestamp string, channel string) {
 
-	oauthToken := os.Getenv("SLACK_OAUTH_TOKEN")
+	oauthToken := getOauthToken()
 
 	resp := response{Token: oauthToken, Name: reactionName, Timestamp: timestamp, Channel: channel}
 	client := http.Client{}
@@ -82,7 +97,7 @@ func addReaction(reactionName string, timestamp string, channel string) {
 	marshalled, _ := json.Marshal(resp)
 	writer := bytes.NewBuffer(marshalled)
 
-	request, erro := http.NewRequest("POST", "https://slack.com/api/reactions.add", writer)
+	request, erro := http.NewRequest(http.MethodPost, slackAddReactionURL, writer)
 
 	if erro != nil {
 		fmt.Println("Error creating request")
@@ -145,7 +160,6 @@ func handle(w http.ResponseWriter, req *http.Request) {
 }
 
 func addReactionToMessage(payload *string) {
-
 	var addReactionActionMessage addReactionAction
 	json.Unmarshal([]byte(*payload), &addReactionActionMessage)
 
@@ -172,13 +186,19 @@ func handleActions(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
+	asUser = flag.Bool("u", false, "React as user")
+	flag.Parse()
+
 	err := godotenv.Load()
 
 	if err != nil {
 		panic("Missing dotenv file")
 	}
 
+	fmt.Println("Ready to react!!1!")
+
 	http.HandleFunc("/", handle)
 	http.HandleFunc("/actions", handleActions)
 	http.ListenAndServe(":8008", nil)
+
 }
