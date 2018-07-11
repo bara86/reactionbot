@@ -42,17 +42,8 @@ type clientResponseData struct {
 }
 
 type channel struct {
-	ID string `json:"id"`
-}
-
-type addReactionActionMessage struct {
-	Timestamp string `json:"ts"`
-}
-
-type addReactionAction struct {
-	ResponseURL string                   `json:"response_url"`
-	Channel     channel                  `json:"channel"`
-	Message     addReactionActionMessage `json:"message"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 var asUser *bool
@@ -191,13 +182,6 @@ func handle(w http.ResponseWriter, req *http.Request) {
 
 	w.Write([]byte("GnocchettiAlVapore"))
 
-}
-
-func addReactionToMessage(payload *string) {
-	var addReactionActionMessage addReactionAction
-	json.Unmarshal([]byte(*payload), &addReactionActionMessage)
-
-	addReaction("heart", addReactionActionMessage.Message.Timestamp, addReactionActionMessage.Channel.ID)
 }
 
 func handleActions(w http.ResponseWriter, req *http.Request) {
