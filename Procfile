@@ -1,1 +1,1 @@
-web: reaction-slackbot
+web: reactionbot
