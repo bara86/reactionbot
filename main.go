@@ -60,6 +60,7 @@ const slackTokenEnv = "SLACK_TOKEN"
 const slackOauthBotToken = "SLACK_OAUTH_BOT_TOKEN"
 const slackOauthUserToken = "SLACK_OAUTH_USER_TOKEN"
 const slackAddReactionURL = "https://slack.com/api/reactions.add"
+const connectionPort = "PORT"
 
 func getOauthToken() string {
 	if !*asUser {
@@ -187,6 +188,17 @@ func handleActions(w http.ResponseWriter, req *http.Request) {
 	w.Write([]byte("GnocchettiAlVapore"))
 }
 
+func checkEnvVariables(envVariables []string) []string {
+
+	var missingVariables []string
+	for _, envVariable := range envVariables {
+		if _, ok := os.LookupEnv(envVariable); !ok {
+			missingVariables = append(missingVariables, envVariable)
+		}
+	}
+	return missingVariables
+}
+
 func main() {
 	asUser = flag.Bool("u", false, "React as user")
 	flag.Parse()
@@ -194,10 +206,14 @@ func main() {
 	err := godotenv.Load()
 
 	if err != nil {
-		fmt.Println("Missing .env file")
+		fmt.Println("Missing .env file, try to read env variables anyway")
 	}
 
-	port := os.Getenv("PORT")
+	if missingVariables := checkEnvVariables([]string{slackTokenEnv, slackOauthBotToken, slackOauthUserToken, connectionPort}); len(missingVariables) != 0 {
+		panic(fmt.Sprintf("Missing env variables %v, can't continue", missingVariables))
+	}
+
+	port := os.Getenv(connectionPort)
 
 	fmt.Println("Ready to react!!1!")
 
