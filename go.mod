@@ -1,1 +1,1 @@
-module slackbot
+module reactionbot
