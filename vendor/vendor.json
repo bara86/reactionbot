@@ -1,0 +1,17 @@
+{
+	"comment": "",
+	"ignore": "",
+	"package": [
+		{
+			"checksumSHA1": "1ds3pmK5s8UbdvNleD2dbDvy1oE=",
+			"path": "github.com/joho/godotenv",
+			"revision": "1709ab122c988931ad53508747b3c061400c2984",
+			"revisionTime": "2018-04-05T05:36:34Z"
+		},
+		{
+			"path": "reactionbot",
+			"revision": ""
+		}
+	],
+	"rootPath": "reactionbot"
+}
