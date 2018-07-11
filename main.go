@@ -144,7 +144,6 @@ func handle(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var data bytes.Buffer
-
 	var messagetype messageType
 	data.ReadFrom(req.Body)
 	json.Unmarshal(data.Bytes(), &messagetype)
