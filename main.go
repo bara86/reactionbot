@@ -195,10 +195,12 @@ func main() {
 		fmt.Println("Missing .env file")
 	}
 
+	port := os.Getenv("PORT")
+
 	fmt.Println("Ready to react!!1!")
 
 	http.HandleFunc("/", handle)
 	http.HandleFunc("/actions", handleActions)
-	http.ListenAndServe(":8008", nil)
+	http.ListenAndServe(fmt.Sprintf(":%s", port), nil)
 
 }
