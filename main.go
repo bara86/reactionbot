@@ -35,7 +35,7 @@ type response struct {
 	Timestamp string `json:"timestamp"`
 }
 
-type responsebello struct {
+type clientResponseData struct {
 	Ok  bool
 	Err string `json:"error"`
 }
@@ -114,12 +114,14 @@ func addReaction(reactionName string, timestamp string, channel string) {
 		fmt.Println("Errore dal client")
 	} else {
 		var data bytes.Buffer
-		data.Reset()
-		data.ReadFrom(clientResponse.Body)
-		var respbello responsebello
-		json.Unmarshal(data.Bytes(), &respbello)
+		var clientRespData clientResponseData
 
-		fmt.Println("ClientResponse", respbello)
+		data.ReadFrom(clientResponse.Body)
+		json.Unmarshal(data.Bytes(), &clientRespData)
+
+		if !clientRespData.Ok {
+			fmt.Println("Can't post reaction: ", clientRespData.Err)
+		}
 	}
 
 }
