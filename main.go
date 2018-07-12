@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -52,6 +53,7 @@ const slackTokenEnv = "SLACK_TOKEN"
 const slackOauthBotToken = "SLACK_OAUTH_BOT_TOKEN"
 const slackOauthUserToken = "SLACK_OAUTH_USER_TOKEN"
 const slackAddReactionURL = "https://slack.com/api/reactions.add"
+const slackOauthAccessURL = "https://slack.com/api/oauth.access"
 const connectionPort = "PORT"
 
 func getOauthToken() string {
@@ -183,6 +185,30 @@ func checkEnvVariables(envVariables []string) []string {
 	return missingVariables
 }
 
+func handleOauth(w http.ResponseWriter, req *http.Request) {
+	fmt.Println("handleOauth", req.URL.Query())
+
+	resp, _ := http.PostForm(slackOauthAccessURL,
+		url.Values{
+			"client_id":     {getClientID()},
+			"client_secret": {getClientSecret()},
+			"code":          {string(req.URL.Query()["code"][0])},
+			"redirect_url":  {fmt.Sprintf("%v/oauth", getAppURL())},
+		})
+	fmt.Println(resp.Body)
+
+	type accessToken struct {
+		AccessToken string `json:"access_token"`
+		Scope       string `json:"scope"`
+	}
+
+	var accessTokenData accessToken
+	var data bytes.Buffer
+	data.ReadFrom(resp.Body)
+	json.Unmarshal(data.Bytes(), &accessTokenData)
+	fmt.Println("User token", accessTokenData.AccessToken)
+}
+
 func main() {
 	asUser = flag.Bool("u", false, "React as user")
 	flag.Parse()
@@ -203,6 +229,7 @@ func main() {
 
 	http.HandleFunc("/", handle)
 	http.HandleFunc("/actions", handleActions)
+	http.HandleFunc("/oauth", handleOauth)
 	http.ListenAndServe(fmt.Sprintf(":%s", port), nil)
 
 }

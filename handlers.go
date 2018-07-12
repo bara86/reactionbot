@@ -83,6 +83,7 @@ func postEphemeralMessage(info *addReactionAction) error {
 	q := url.Query()
 	q.Add("client_id", getClientID())
 	q.Add("scope", reactionsWriteScope)
+	q.Add("redirect_uri", fmt.Sprintf("%v/oauth", getAppURL()))
 	url.RawQuery = q.Encode()
 
 	jsonMsg := fmt.Sprintf(authorizeButton, getOauthToken(), info.Channel.ID, info.User.Id, url.String())
