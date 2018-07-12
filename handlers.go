@@ -86,7 +86,7 @@ func postEphemeralMessage(info *addReactionAction) error {
 	q.Add("redirect_uri", fmt.Sprintf("%v/oauth", getAppURL()))
 	url.RawQuery = q.Encode()
 
-	jsonMsg := fmt.Sprintf(authorizeButton, getOauthToken(), info.Channel.ID, info.User.Id, url.String())
+	jsonMsg := fmt.Sprintf(authorizeButton, getOauthToken(false), info.Channel.ID, info.User.Id, url.String())
 	fmt.Println(jsonMsg)
 	buf := bytes.NewBufferString(jsonMsg)
 	_, err2 := postToSlack(slackEphemeralURL, buf)

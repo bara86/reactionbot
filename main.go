@@ -8,7 +8,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
+	"reflect"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -49,32 +50,29 @@ type channel struct {
 
 var asUser *bool
 
-const slackTokenEnv = "SLACK_TOKEN"
-const slackOauthBotToken = "SLACK_OAUTH_BOT_TOKEN"
-const slackOauthUserToken = "SLACK_OAUTH_USER_TOKEN"
 const slackAddReactionURL = "https://slack.com/api/reactions.add"
 const slackOauthAccessURL = "https://slack.com/api/oauth.access"
-const connectionPort = "PORT"
 
-func getOauthToken() string {
-	if !*asUser {
-		return os.Getenv(slackOauthBotToken)
+func unmarshallData(reader io.Reader, v interface{}) {
+	var data bytes.Buffer
+	data.ReadFrom(reader)
+	err := json.Unmarshal(data.Bytes(), &v)
+
+	if err != nil {
+		fmt.Println("Unable to unmarshal data for type", reflect.TypeOf(v).String())
 	}
-	return os.Getenv(slackOauthUserToken)
 }
 
-func handleURLVerification(data *bytes.Buffer, w http.ResponseWriter) {
+func handleURLVerification(w http.ResponseWriter, req *http.Request) {
 	type urlVerification struct {
 		Token     string
 		Challenge string
 	}
 
 	var urlverification urlVerification
-	json.Unmarshal(data.Bytes(), &urlverification)
+	unmarshallData(req.Body, &urlverification)
 
-	slackToken := os.Getenv(slackTokenEnv)
-
-	if slackToken != urlverification.Token {
+	if getSlackToken() != urlverification.Token {
 		http.Error(w, "Unauthorized", http.StatusBadRequest)
 		return
 	}
@@ -91,7 +89,7 @@ func postToSlack(url string, w io.Reader) (*http.Response, error) {
 	}
 
 	// Add Authorization token
-	request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", getOauthToken()))
+	request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", getOauthToken(*asUser)))
 	request.Header.Add("Content-type", "application/json")
 
 	client := http.Client{}
@@ -100,11 +98,9 @@ func postToSlack(url string, w io.Reader) (*http.Response, error) {
 	if clientError != nil {
 		fmt.Println("Errore dal client")
 	} else {
-		var data bytes.Buffer
 		var clientRespData clientResponseData
 
-		data.ReadFrom(clientResponse.Body)
-		json.Unmarshal(data.Bytes(), &clientRespData)
+		unmarshallData(clientResponse.Body, &clientRespData)
 
 		if !clientRespData.Ok {
 			fmt.Println("Error send HTTP post request to Slack:", clientRespData.Err)
@@ -115,16 +111,16 @@ func postToSlack(url string, w io.Reader) (*http.Response, error) {
 
 func addReaction(reactionName string, timestamp string, channel string) {
 	fmt.Println("addReaction method")
-	resp := response{Token: getOauthToken(), Name: reactionName, Timestamp: timestamp, Channel: channel}
+	resp := response{Token: getOauthToken(*asUser), Name: reactionName, Timestamp: timestamp, Channel: channel}
 	marshalled, _ := json.Marshal(resp)
 	stringBuffer := bytes.NewBuffer(marshalled)
 	postToSlack(slackAddReactionURL, stringBuffer)
 }
 
-func handleEvent(data *bytes.Buffer) {
+func handleEvent(data io.Reader) {
 	var msg message
 
-	json.Unmarshal(data.Bytes(), &msg)
+	unmarshallData(data, &msg)
 
 	if msg.Event.Type == "message" {
 		go addReaction("thumbsup", msg.Event.Ts, msg.Event.Channel)
@@ -137,18 +133,16 @@ func handle(w http.ResponseWriter, req *http.Request) {
 		Type string
 	}
 
-	var data bytes.Buffer
 	var messagetype messageType
-	data.ReadFrom(req.Body)
-	json.Unmarshal(data.Bytes(), &messagetype)
+	unmarshallData(req.Body, &messagetype)
 
 	if messagetype.Type == "url_verification" {
-		handleURLVerification(&data, w)
+		handleURLVerification(w, req)
 	} else {
 		if messagetype.Type != "event_callback" {
 			panic(fmt.Sprint("Not `event_callback`", messagetype.Type))
 		}
-		handleEvent(&data)
+		handleEvent(req.Body)
 	}
 
 	w.Write([]byte("GnocchettiAlVapore"))
@@ -162,8 +156,7 @@ func handleActions(w http.ResponseWriter, req *http.Request) {
 
 	var callbackid callbackID
 	payload := req.FormValue("payload")
-
-	json.Unmarshal([]byte(payload), &callbackid)
+	unmarshallData(strings.NewReader(payload), &callbackid)
 
 	if callbackid.CallbackID == "add_reaction_to_message" {
 		go addReactionToMessage(&payload)
@@ -172,17 +165,6 @@ func handleActions(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.Write([]byte("GnocchettiAlVapore"))
-}
-
-func checkEnvVariables(envVariables []string) []string {
-
-	var missingVariables []string
-	for _, envVariable := range envVariables {
-		if _, ok := os.LookupEnv(envVariable); !ok {
-			missingVariables = append(missingVariables, envVariable)
-		}
-	}
-	return missingVariables
 }
 
 func handleOauth(w http.ResponseWriter, req *http.Request) {
@@ -203,9 +185,7 @@ func handleOauth(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var accessTokenData accessToken
-	var data bytes.Buffer
-	data.ReadFrom(resp.Body)
-	json.Unmarshal(data.Bytes(), &accessTokenData)
+	unmarshallData(resp.Body, &accessTokenData)
 	fmt.Println("User token", accessTokenData.AccessToken)
 }
 
@@ -219,17 +199,15 @@ func main() {
 		fmt.Println("Missing .env file, try to read env variables anyway")
 	}
 
-	if missingVariables := checkEnvVariables([]string{slackTokenEnv, slackOauthBotToken, slackOauthUserToken, connectionPort}); len(missingVariables) != 0 {
+	if missingVariables := checkEnvVariables(); len(missingVariables) != 0 {
 		panic(fmt.Sprintf("Missing env variables %v, can't continue", missingVariables))
 	}
-
-	port := os.Getenv(connectionPort)
 
 	fmt.Println("Ready to react!!1!")
 
 	http.HandleFunc("/", handle)
 	http.HandleFunc("/actions", handleActions)
 	http.HandleFunc("/oauth", handleOauth)
-	http.ListenAndServe(fmt.Sprintf(":%s", port), nil)
+	http.ListenAndServe(fmt.Sprintf(":%s", getConnectionPort()), nil)
 
 }
