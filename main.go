@@ -112,42 +112,11 @@ func postToSlack(url string, w io.Reader) (*http.Response, error) {
 }
 
 func addReaction(reactionName string, timestamp string, channel string) {
-
-	oauthToken := getOauthToken()
-
-	resp := response{Token: oauthToken, Name: reactionName, Timestamp: timestamp, Channel: channel}
-	client := http.Client{}
-
+	fmt.Println("addReaction method")
+	resp := response{Token: getOauthToken(), Name: reactionName, Timestamp: timestamp, Channel: channel}
 	marshalled, _ := json.Marshal(resp)
-	writer := bytes.NewBuffer(marshalled)
-
-	request, erro := http.NewRequest(http.MethodPost, slackAddReactionURL, writer)
-
-	if erro != nil {
-		fmt.Println("Error creating request")
-		return
-	}
-
-	// Add Authorization token
-	request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", oauthToken))
-	request.Header.Add("Content-type", "application/json")
-
-	clientResponse, clientError := client.Do(request)
-
-	if clientError != nil {
-		fmt.Println("Errore dal client")
-	} else {
-		var data bytes.Buffer
-		var clientRespData clientResponseData
-
-		data.ReadFrom(clientResponse.Body)
-		json.Unmarshal(data.Bytes(), &clientRespData)
-
-		if !clientRespData.Ok {
-			fmt.Println("Can't post reaction: ", clientRespData.Err)
-		}
-	}
-
+	stringBuffer := bytes.NewBuffer(marshalled)
+	postToSlack(slackAddReactionURL, stringBuffer)
 }
 
 func handleEvent(data *bytes.Buffer) {
