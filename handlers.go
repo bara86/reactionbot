@@ -70,13 +70,14 @@ func addReactionToMessage(payload *string) {
 		}
 	}
 
-	//addReaction("heart", info.Message.Timestamp, info.Channel.ID)
+	addReaction("heart", info.Message.Timestamp, info.Channel.ID)
 }
 
 func postEphemeralMessage(info *addReactionAction) error {
 	fmt.Println("Post ephemeral message")
 
-	jsonMsg := fmt.Sprintf(authorizeButton, getOauthToken(), info.Channel.Name, info.User.Id)
+	jsonMsg := fmt.Sprintf(authorizeButton, getOauthToken(), info.Channel.Name, info.User.Name)
+	fmt.Println(jsonMsg)
 	buf := bytes.NewBufferString(jsonMsg)
 	_, err2 := postToSlack(slackEphemeralUrl, buf)
 	if err2 != nil {
