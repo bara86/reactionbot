@@ -81,7 +81,7 @@ func handleURLVerification(data *bytes.Buffer, w http.ResponseWriter) {
 }
 
 func postToSlack(url string, w io.Reader) (*http.Response, error) {
-	request, erro := http.NewRequest(http.MethodPost, slackAddReactionURL, w)
+	request, erro := http.NewRequest(http.MethodPost, url, w)
 
 	if erro != nil {
 		fmt.Println("Error creating request")

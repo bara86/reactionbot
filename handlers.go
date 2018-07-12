@@ -4,35 +4,38 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"sync"
 )
 
 const (
-	slackEphemeralUrl = "https://slack.com/api/chat.postEphemeral"
+	slackEphemeralURL = "https://slack.com/api/chat.postEphemeral"
+
+	slackOauthURL = "slack.com/oauth/authorize"
 
 	authorizeButton = `{
 		"token": "%v",
 		"channel": "%v",
 		"text": "We need your approval to post reaction with your name.",
-		"user": "%v"
-	}`
-)
-
-/*
-"attachments": [
-			{
-				"fallback": "Approve posting a reaction with your name https://foo.bar",
-				"callback_id": "mignatta",
-				"actions": [
+		"user": "%v",
+		"attachments": [
 					{
-						"type": "button",
-						"text": "Approve",
-						"name": "approve"
+						"fallback": "Approve posting a reaction with your name https://foo.bar",
+						"callback_id": "mignatta",
+						"actions": [
+							{
+								"type": "button",
+								"text": "Approve",
+								"name": "approve",
+								"url": "%v"
+							}
+						]
 					}
 				]
-			}
-		]
-*/
+	}`
+
+	reactionsWriteScope = "reactions:write"
+)
 
 type addReactionActionMessage struct {
 	Timestamp string `json:"ts"`
@@ -69,17 +72,23 @@ func addReactionToMessage(payload *string) {
 
 		}
 	}
+	// addReaction("heart", info.Message.Timestamp, info.Channel.ID)
 
-	addReaction("heart", info.Message.Timestamp, info.Channel.ID)
 }
 
 func postEphemeralMessage(info *addReactionAction) error {
 	fmt.Println("Post ephemeral message")
 
-	jsonMsg := fmt.Sprintf(authorizeButton, getOauthToken(), info.Channel.Name, info.User.Name)
+	url := url.URL{Path: slackOauthURL, Scheme: "https"}
+	q := url.Query()
+	q.Add("client_id", getClientID())
+	q.Add("scope", reactionsWriteScope)
+	url.RawQuery = q.Encode()
+
+	jsonMsg := fmt.Sprintf(authorizeButton, getOauthToken(), info.Channel.ID, info.User.Id, url.String())
 	fmt.Println(jsonMsg)
 	buf := bytes.NewBufferString(jsonMsg)
-	_, err2 := postToSlack(slackEphemeralUrl, buf)
+	_, err2 := postToSlack(slackEphemeralURL, buf)
 	if err2 != nil {
 		return err2
 	}
