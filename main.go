@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"reflect"
 	"strings"
 
@@ -80,7 +79,7 @@ func handleURLVerification(w http.ResponseWriter, req *http.Request) {
 	w.Write([]byte(urlverification.Challenge))
 }
 
-func postToSlack(url string, w io.Reader) (*http.Response, error) {
+func postToSlack(token string, url string, w io.Reader) (*http.Response, error) {
 	request, erro := http.NewRequest(http.MethodPost, url, w)
 
 	if erro != nil {
@@ -89,7 +88,7 @@ func postToSlack(url string, w io.Reader) (*http.Response, error) {
 	}
 
 	// Add Authorization token
-	request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", getOauthToken(*asUser)))
+	request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 	request.Header.Add("Content-type", "application/json")
 
 	client := http.Client{}
@@ -109,12 +108,12 @@ func postToSlack(url string, w io.Reader) (*http.Response, error) {
 	return clientResponse, clientError
 }
 
-func addReaction(reactionName string, timestamp string, channel string) {
+func addReaction(token string, reactionName string, timestamp string, channel string) {
 	fmt.Println("addReaction method")
-	resp := response{Token: getOauthToken(*asUser), Name: reactionName, Timestamp: timestamp, Channel: channel}
+	resp := response{Token: token, Name: reactionName, Timestamp: timestamp, Channel: channel}
 	marshalled, _ := json.Marshal(resp)
 	stringBuffer := bytes.NewBuffer(marshalled)
-	postToSlack(slackAddReactionURL, stringBuffer)
+	postToSlack(token, slackAddReactionURL, stringBuffer)
 }
 
 func handleEvent(data io.Reader) {
@@ -123,7 +122,7 @@ func handleEvent(data io.Reader) {
 	unmarshallData(data, &msg)
 
 	if msg.Event.Type == "message" {
-		go addReaction("thumbsup", msg.Event.Ts, msg.Event.Channel)
+		go addReaction(getOauthToken(*asUser), "thumbsup", msg.Event.Ts, msg.Event.Channel)
 	}
 }
 
@@ -165,28 +164,6 @@ func handleActions(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.Write([]byte("GnocchettiAlVapore"))
-}
-
-func handleOauth(w http.ResponseWriter, req *http.Request) {
-	fmt.Println("handleOauth", req.URL.Query())
-
-	resp, _ := http.PostForm(slackOauthAccessURL,
-		url.Values{
-			"client_id":     {getClientID()},
-			"client_secret": {getClientSecret()},
-			"code":          {string(req.URL.Query()["code"][0])},
-			"redirect_url":  {fmt.Sprintf("%v/oauth", getAppURL())},
-		})
-	fmt.Println(resp.Body)
-
-	type accessToken struct {
-		AccessToken string `json:"access_token"`
-		Scope       string `json:"scope"`
-	}
-
-	var accessTokenData accessToken
-	unmarshallData(resp.Body, &accessTokenData)
-	fmt.Println("User token", accessTokenData.AccessToken)
 }
 
 func main() {
