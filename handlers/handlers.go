@@ -43,6 +43,14 @@ const (
 		]
 	}`
 
+	authorizedOkMessage = `{
+		"token": "%v",
+		"channel": "%v",
+		"text": "Authorized!",
+		"user": "%v",
+		"delete_original": true
+	}`
+
 	reactionsWriteScope = "reactions:write"
 )
 
@@ -183,7 +191,7 @@ func postAuthorizationButton(info *addReactionAction) error {
 	fmt.Println("Post authorization button")
 
 	url := url.URL{Path: slackOauthURL, Scheme: "https"}
-	uuid := uuid.Must(uuid.NewV4()).String()
+	uuid := uuid.Must(uuid.NewV4()).String() + ":" + info.Channel.ID
 
 	q := url.Query()
 	q.Add("client_id", environment.GetClientID())
@@ -204,8 +212,9 @@ func postAuthorizationButton(info *addReactionAction) error {
 	return nil
 }
 
+/// Handle bot authorization to post reaction on behalf of the user.
+/// For now it's invoked from Slack server when the user clicks on the authorize button.
 func handleOauth(w http.ResponseWriter, req *http.Request) {
-	fmt.Println("handleOauth", req.URL.Query())
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprintf(w, "<body onload=\"window.open(window.location.href, '_self', ''); window.close()\"></body>")
@@ -231,4 +240,11 @@ func handleOauth(w http.ResponseWriter, req *http.Request) {
 	unmarshallData(resp.Body, &accessTokenData)
 
 	userTokens.AddUser(userID, accessTokenData.AccessToken)
+
+	// The channel is encoded in state, retrieve it
+	splitSlice := strings.Split(state, ":")
+	state, channelId := splitSlice[0], splitSlice[1]
+	jsonMsg := fmt.Sprintf(authorizedOkMessage, environment.GetOauthToken(), channelId, userID)
+	buf := bytes.NewBufferString(jsonMsg)
+	postToSlack(environment.GetOauthToken(), slackEphemeralURL, buf)
 }
