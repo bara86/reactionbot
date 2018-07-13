@@ -124,6 +124,7 @@ func postToSlack(token string, url string, w io.Reader) (*http.Response, error) 
 
 		if !clientRespData.Ok {
 			fmt.Println("Error send HTTP post request to Slack:", clientRespData.Err)
+			clientError = fmt.Errorf("postToSlack returned error: %v", clientRespData.Err)
 		}
 	}
 	return clientResponse, clientError
