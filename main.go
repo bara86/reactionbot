@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io"
 	"net/http"
@@ -46,8 +45,6 @@ type channel struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 }
-
-var asUser *bool
 
 const slackAddReactionURL = "https://slack.com/api/reactions.add"
 const slackOauthAccessURL = "https://slack.com/api/oauth.access"
@@ -122,7 +119,7 @@ func handleEvent(data io.Reader) {
 	unmarshallData(data, &msg)
 
 	if msg.Event.Type == "message" {
-		go addReaction(getOauthToken(*asUser), "thumbsup", msg.Event.Ts, msg.Event.Channel)
+		go addReaction(getOauthToken(), "thumbsup", msg.Event.Ts, msg.Event.Channel)
 	}
 }
 
@@ -167,8 +164,6 @@ func handleActions(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	asUser = flag.Bool("u", false, "React as user")
-	flag.Parse()
 
 	err := godotenv.Load()
 

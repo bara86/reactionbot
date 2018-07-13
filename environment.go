@@ -5,19 +5,18 @@ import (
 )
 
 const (
-	clientID            = "CLIENT_ID"
-	appURL              = "APP_URL"
-	clientSecret        = "CLIENT_SECRET"
-	slackTokenEnv       = "SLACK_TOKEN"
-	connectionPort      = "PORT"
-	slackOauthBotToken  = "SLACK_OAUTH_BOT_TOKEN"
-	slackOauthUserToken = "SLACK_OAUTH_USER_TOKEN"
+	clientID           = "CLIENT_ID"
+	appURL             = "APP_URL"
+	clientSecret       = "CLIENT_SECRET"
+	slackTokenEnv      = "SLACK_TOKEN"
+	connectionPort     = "PORT"
+	slackOauthBotToken = "SLACK_OAUTH_BOT_TOKEN"
 )
 
 func checkEnvVariables() []string {
 
 	var missingVariables []string
-	checkedEnvVariables := []string{clientID, appURL, clientSecret, slackTokenEnv, connectionPort, slackOauthBotToken, slackOauthUserToken}
+	checkedEnvVariables := []string{clientID, appURL, clientSecret, slackTokenEnv, connectionPort, slackOauthBotToken}
 	for _, envVariable := range checkedEnvVariables {
 		if _, ok := os.LookupEnv(envVariable); !ok {
 			missingVariables = append(missingVariables, envVariable)
@@ -26,10 +25,7 @@ func checkEnvVariables() []string {
 	return missingVariables
 }
 
-func getOauthToken(user bool) string {
-	if user {
-		return getEnvVariable(slackOauthUserToken)
-	}
+func getOauthToken() string {
 	return getEnvVariable(slackOauthBotToken)
 }
 

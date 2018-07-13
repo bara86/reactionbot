@@ -123,10 +123,10 @@ func postEphemeralMessage(info *addReactionAction) error {
 
 	temporaryTokens.Add(uuid, info.User.Id)
 
-	jsonMsg := fmt.Sprintf(authorizeButton, getOauthToken(false), info.Channel.ID, info.User.Id, url.String())
+	jsonMsg := fmt.Sprintf(authorizeButton, getOauthToken(), info.Channel.ID, info.User.Id, url.String())
 	fmt.Println(jsonMsg)
 	buf := bytes.NewBufferString(jsonMsg)
-	_, err2 := postToSlack(getOauthToken(false), slackEphemeralURL, buf)
+	_, err2 := postToSlack(getOauthToken(), slackEphemeralURL, buf)
 	if err2 != nil {
 		return err2
 	}
