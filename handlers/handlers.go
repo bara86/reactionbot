@@ -169,7 +169,7 @@ func addReactionToMessage(payload *string) {
 	token, err := userTokens.GetUser(info.User.ID)
 
 	if err != nil {
-		if postEphemeralMessage(&info) != nil {
+		if postAuthorizationButton(&info) != nil {
 
 		}
 	} else {
@@ -178,8 +178,8 @@ func addReactionToMessage(payload *string) {
 
 }
 
-func postEphemeralMessage(info *addReactionAction) error {
-	fmt.Println("Post ephemeral message")
+func postAuthorizationButton(info *addReactionAction) error {
+	fmt.Println("Post authorization button")
 
 	url := url.URL{Path: slackOauthURL, Scheme: "https"}
 	uuid := uuid.Must(uuid.NewV4()).String()
