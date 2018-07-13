@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
-	"os"
+	"reflect"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -41,46 +43,35 @@ type clientResponseData struct {
 }
 
 type channel struct {
-	ID string `json:"id"`
-}
-
-type addReactionActionMessage struct {
-	Timestamp string `json:"ts"`
-}
-
-type addReactionAction struct {
-	ResponseURL string                   `json:"response_url"`
-	Channel     channel                  `json:"channel"`
-	Message     addReactionActionMessage `json:"message"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 var asUser *bool
 
-const slackTokenEnv = "SLACK_TOKEN"
-const slackOauthBotToken = "SLACK_OAUTH_BOT_TOKEN"
-const slackOauthUserToken = "SLACK_OAUTH_USER_TOKEN"
 const slackAddReactionURL = "https://slack.com/api/reactions.add"
-const connectionPort = "PORT"
+const slackOauthAccessURL = "https://slack.com/api/oauth.access"
 
-func getOauthToken() string {
-	if !*asUser {
-		return os.Getenv(slackOauthBotToken)
+func unmarshallData(reader io.Reader, v interface{}) {
+	var data bytes.Buffer
+	data.ReadFrom(reader)
+	err := json.Unmarshal(data.Bytes(), &v)
+
+	if err != nil {
+		fmt.Println("Unable to unmarshal data for type", reflect.TypeOf(v).String())
 	}
-	return os.Getenv(slackOauthUserToken)
 }
 
-func handleURLVerification(data *bytes.Buffer, w http.ResponseWriter) {
+func handleURLVerification(w http.ResponseWriter, req *http.Request) {
 	type urlVerification struct {
 		Token     string
 		Challenge string
 	}
 
 	var urlverification urlVerification
-	json.Unmarshal(data.Bytes(), &urlverification)
+	unmarshallData(req.Body, &urlverification)
 
-	slackToken := os.Getenv(slackTokenEnv)
-
-	if slackToken != urlverification.Token {
+	if getSlackToken() != urlverification.Token {
 		http.Error(w, "Unauthorized", http.StatusBadRequest)
 		return
 	}
@@ -88,52 +79,50 @@ func handleURLVerification(data *bytes.Buffer, w http.ResponseWriter) {
 	w.Write([]byte(urlverification.Challenge))
 }
 
-func addReaction(reactionName string, timestamp string, channel string) {
-
-	oauthToken := getOauthToken()
-
-	resp := response{Token: oauthToken, Name: reactionName, Timestamp: timestamp, Channel: channel}
-	client := http.Client{}
-
-	marshalled, _ := json.Marshal(resp)
-	writer := bytes.NewBuffer(marshalled)
-
-	request, erro := http.NewRequest(http.MethodPost, slackAddReactionURL, writer)
+func postToSlack(token string, url string, w io.Reader) (*http.Response, error) {
+	request, erro := http.NewRequest(http.MethodPost, url, w)
 
 	if erro != nil {
 		fmt.Println("Error creating request")
-		return
+		return &http.Response{}, erro
 	}
 
 	// Add Authorization token
-	request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", oauthToken))
+	request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 	request.Header.Add("Content-type", "application/json")
 
+	client := http.Client{}
 	clientResponse, clientError := client.Do(request)
 
 	if clientError != nil {
 		fmt.Println("Errore dal client")
 	} else {
-		var data bytes.Buffer
 		var clientRespData clientResponseData
 
-		data.ReadFrom(clientResponse.Body)
-		json.Unmarshal(data.Bytes(), &clientRespData)
+		unmarshallData(clientResponse.Body, &clientRespData)
 
 		if !clientRespData.Ok {
-			fmt.Println("Can't post reaction: ", clientRespData.Err)
+			fmt.Println("Error send HTTP post request to Slack:", clientRespData.Err)
 		}
 	}
-
+	return clientResponse, clientError
 }
 
-func handleEvent(data *bytes.Buffer) {
+func addReaction(token string, reactionName string, timestamp string, channel string) {
+	fmt.Println("addReaction method")
+	resp := response{Token: token, Name: reactionName, Timestamp: timestamp, Channel: channel}
+	marshalled, _ := json.Marshal(resp)
+	stringBuffer := bytes.NewBuffer(marshalled)
+	postToSlack(token, slackAddReactionURL, stringBuffer)
+}
+
+func handleEvent(data io.Reader) {
 	var msg message
 
-	json.Unmarshal(data.Bytes(), &msg)
+	unmarshallData(data, &msg)
 
 	if msg.Event.Type == "message" {
-		go addReaction("thumbsup", msg.Event.Ts, msg.Event.Channel)
+		go addReaction(getOauthToken(*asUser), "thumbsup", msg.Event.Ts, msg.Event.Channel)
 	}
 }
 
@@ -143,29 +132,20 @@ func handle(w http.ResponseWriter, req *http.Request) {
 		Type string
 	}
 
-	var data bytes.Buffer
 	var messagetype messageType
-	data.ReadFrom(req.Body)
-	json.Unmarshal(data.Bytes(), &messagetype)
+	unmarshallData(req.Body, &messagetype)
 
 	if messagetype.Type == "url_verification" {
-		handleURLVerification(&data, w)
+		handleURLVerification(w, req)
 	} else {
 		if messagetype.Type != "event_callback" {
 			panic(fmt.Sprint("Not `event_callback`", messagetype.Type))
 		}
-		handleEvent(&data)
+		handleEvent(req.Body)
 	}
 
 	w.Write([]byte("GnocchettiAlVapore"))
 
-}
-
-func addReactionToMessage(payload *string) {
-	var addReactionActionMessage addReactionAction
-	json.Unmarshal([]byte(*payload), &addReactionActionMessage)
-
-	addReaction("heart", addReactionActionMessage.Message.Timestamp, addReactionActionMessage.Channel.ID)
 }
 
 func handleActions(w http.ResponseWriter, req *http.Request) {
@@ -175,8 +155,7 @@ func handleActions(w http.ResponseWriter, req *http.Request) {
 
 	var callbackid callbackID
 	payload := req.FormValue("payload")
-
-	json.Unmarshal([]byte(payload), &callbackid)
+	unmarshallData(strings.NewReader(payload), &callbackid)
 
 	if callbackid.CallbackID == "add_reaction_to_message" {
 		go addReactionToMessage(&payload)
@@ -185,17 +164,6 @@ func handleActions(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.Write([]byte("GnocchettiAlVapore"))
-}
-
-func checkEnvVariables(envVariables []string) []string {
-
-	var missingVariables []string
-	for _, envVariable := range envVariables {
-		if _, ok := os.LookupEnv(envVariable); !ok {
-			missingVariables = append(missingVariables, envVariable)
-		}
-	}
-	return missingVariables
 }
 
 func main() {
@@ -208,16 +176,15 @@ func main() {
 		fmt.Println("Missing .env file, try to read env variables anyway")
 	}
 
-	if missingVariables := checkEnvVariables([]string{slackTokenEnv, slackOauthBotToken, slackOauthUserToken, connectionPort}); len(missingVariables) != 0 {
+	if missingVariables := checkEnvVariables(); len(missingVariables) != 0 {
 		panic(fmt.Sprintf("Missing env variables %v, can't continue", missingVariables))
 	}
-
-	port := os.Getenv(connectionPort)
 
 	fmt.Println("Ready to react!!1!")
 
 	http.HandleFunc("/", handle)
 	http.HandleFunc("/actions", handleActions)
-	http.ListenAndServe(fmt.Sprintf(":%s", port), nil)
+	http.HandleFunc("/oauth", handleOauth)
+	http.ListenAndServe(fmt.Sprintf(":%s", getConnectionPort()), nil)
 
 }
