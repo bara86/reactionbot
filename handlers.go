@@ -136,6 +136,9 @@ func postEphemeralMessage(info *addReactionAction) error {
 func handleOauth(w http.ResponseWriter, req *http.Request) {
 	fmt.Println("handleOauth", req.URL.Query())
 
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	fmt.Fprintf(w, "<body onload=\"window.open(window.location.href, '_self', ''); window.close()\"></body>")
+
 	query := req.URL.Query()
 	state := string(query["state"][0])
 
