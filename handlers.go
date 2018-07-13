@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"sync"
 
+	"reactionbot/environment"
+
 	"github.com/satori/go.uuid"
 )
 
@@ -115,18 +117,18 @@ func postEphemeralMessage(info *addReactionAction) error {
 	uuid := uuid.Must(uuid.NewV4()).String()
 
 	q := url.Query()
-	q.Add("client_id", getClientID())
+	q.Add("client_id", environment.GetClientID())
 	q.Add("scope", reactionsWriteScope)
-	q.Add("redirect_uri", fmt.Sprintf("%v/oauth", getAppURL()))
+	q.Add("redirect_uri", fmt.Sprintf("%v/oauth", environment.GetAppURL()))
 	q.Add("state", uuid)
 	url.RawQuery = q.Encode()
 
 	temporaryTokens.Add(uuid, info.User.Id)
 
-	jsonMsg := fmt.Sprintf(authorizeButton, getOauthToken(), info.Channel.ID, info.User.Id, url.String())
+	jsonMsg := fmt.Sprintf(authorizeButton, environment.GetOauthToken(), info.Channel.ID, info.User.Id, url.String())
 	fmt.Println(jsonMsg)
 	buf := bytes.NewBufferString(jsonMsg)
-	_, err2 := postToSlack(getOauthToken(), slackEphemeralURL, buf)
+	_, err2 := postToSlack(environment.GetOauthToken(), slackEphemeralURL, buf)
 	if err2 != nil {
 		return err2
 	}
@@ -144,10 +146,10 @@ func handleOauth(w http.ResponseWriter, req *http.Request) {
 
 	resp, _ := http.PostForm(slackOauthAccessURL,
 		url.Values{
-			"client_id":     {getClientID()},
-			"client_secret": {getClientSecret()},
+			"client_id":     {environment.GetClientID()},
+			"client_secret": {environment.GetClientSecret()},
 			"code":          {string(query["code"][0])},
-			"redirect_url":  {fmt.Sprintf("%v/oauth", getAppURL())},
+			"redirect_url":  {fmt.Sprintf("%v/oauth", environment.GetAppURL())},
 		})
 	fmt.Println(resp.Body)
 

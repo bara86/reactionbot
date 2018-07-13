@@ -1,7 +1,10 @@
-package main
+package environment
 
 import (
+	"fmt"
 	"os"
+
+	"github.com/joho/godotenv"
 )
 
 const (
@@ -12,6 +15,19 @@ const (
 	connectionPort     = "PORT"
 	slackOauthBotToken = "SLACK_OAUTH_BOT_TOKEN"
 )
+
+func LoadEnvironmentVariables() error {
+	err := godotenv.Load()
+
+	if err != nil {
+		fmt.Println("Missing .env file, try to read env variables anyway")
+	}
+
+	if missingVariables := checkEnvVariables(); len(missingVariables) != 0 {
+		return fmt.Errorf("Missing env variables %v, can't continue", missingVariables)
+	}
+	return nil
+}
 
 func checkEnvVariables() []string {
 
@@ -25,27 +41,27 @@ func checkEnvVariables() []string {
 	return missingVariables
 }
 
-func getOauthToken() string {
+func GetOauthToken() string {
 	return getEnvVariable(slackOauthBotToken)
 }
 
-func getConnectionPort() string {
+func GetConnectionPort() string {
 	return getEnvVariable(connectionPort)
 }
 
-func getSlackToken() string {
+func GetSlackToken() string {
 	return getEnvVariable(slackTokenEnv)
 }
 
-func getClientID() string {
+func GetClientID() string {
 	return getEnvVariable(clientID)
 }
 
-func getClientSecret() string {
+func GetClientSecret() string {
 	return getEnvVariable(clientSecret)
 }
 
-func getAppURL() string {
+func GetAppURL() string {
 	return getEnvVariable(appURL)
 }
 

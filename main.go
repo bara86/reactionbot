@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/joho/godotenv"
+	"reactionbot/environment"
 )
 
 type event struct {
@@ -68,7 +68,7 @@ func handleURLVerification(w http.ResponseWriter, req *http.Request) {
 	var urlverification urlVerification
 	unmarshallData(req.Body, &urlverification)
 
-	if getSlackToken() != urlverification.Token {
+	if environment.GetSlackToken() != urlverification.Token {
 		http.Error(w, "Unauthorized", http.StatusBadRequest)
 		return
 	}
@@ -119,7 +119,7 @@ func handleEvent(data io.Reader) {
 	unmarshallData(data, &msg)
 
 	if msg.Event.Type == "message" {
-		go addReaction(getOauthToken(), "thumbsup", msg.Event.Ts, msg.Event.Channel)
+		go addReaction(environment.GetOauthToken(), "thumbsup", msg.Event.Ts, msg.Event.Channel)
 	}
 }
 
@@ -165,14 +165,8 @@ func handleActions(w http.ResponseWriter, req *http.Request) {
 
 func main() {
 
-	err := godotenv.Load()
-
-	if err != nil {
-		fmt.Println("Missing .env file, try to read env variables anyway")
-	}
-
-	if missingVariables := checkEnvVariables(); len(missingVariables) != 0 {
-		panic(fmt.Sprintf("Missing env variables %v, can't continue", missingVariables))
+	if err := environment.LoadEnvironmentVariables(); err != nil {
+		panic(err)
 	}
 
 	fmt.Println("Ready to react!!1!")
@@ -180,6 +174,6 @@ func main() {
 	http.HandleFunc("/", handle)
 	http.HandleFunc("/actions", handleActions)
 	http.HandleFunc("/oauth", handleOauth)
-	http.ListenAndServe(fmt.Sprintf(":%s", getConnectionPort()), nil)
+	http.ListenAndServe(fmt.Sprintf(":%s", environment.GetConnectionPort()), nil)
 
 }
