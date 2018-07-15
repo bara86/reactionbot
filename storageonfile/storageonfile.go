@@ -1,4 +1,4 @@
-package storage
+package storageonfile
 
 import (
 	"encoding/json"
@@ -21,7 +21,9 @@ func SetUp() (*UserStorage, error) {
 }
 
 func (u *UserStorage) setUp() error {
-	u.keys = sync.Map{}
+	if v, _ := environment.GetSaveOnFile(); !v {
+		return nil
+	}
 
 	fileName := environment.GetSaveFileName()
 	f, err := os.OpenFile(fileName, os.O_CREATE|os.O_RDONLY, 0644)
@@ -79,34 +81,34 @@ func (u *UserStorage) saveMap() error {
 
 }
 
-func (u *UserStorage) LookupUser(user string) bool {
-	_, ok := u.keys.Load(user)
+func (u *UserStorage) Lookup(code string) bool {
+	_, ok := u.keys.Load(code)
 	return ok
 }
 
-func (u *UserStorage) AddUser(user string, token string) error {
-	u.keys.Store(user, token)
+func (u *UserStorage) Add(code string, value string) error {
+	u.keys.Store(code, value)
 	return u.saveMap()
 }
 
-func (u *UserStorage) RemoveUser(user string) error {
-	u.keys.Delete(user)
+func (u *UserStorage) Remove(code string) error {
+	u.keys.Delete(code)
 	return u.saveMap()
 }
 
-func (u *UserStorage) GetUser(user string) (string, error) {
-	value, ok := u.keys.Load(user)
+func (u *UserStorage) Get(code string) (string, error) {
+	value, ok := u.keys.Load(code)
 	if !ok {
-		return "", fmt.Errorf("No user %s", user)
+		return "", fmt.Errorf("No code %s", code)
 	}
 
 	return value.(string), nil
 }
 
-func (u *UserStorage) PopUser(user string) (string, error) {
-	value, err := u.GetUser(user)
+func (u *UserStorage) Pop(code string) (string, error) {
+	value, err := u.Get(code)
 	if err == nil {
-		u.RemoveUser(user)
+		u.Remove(code)
 	}
 	return value, err
 }

@@ -166,7 +166,7 @@ func addReactionToMessage(payload *string) {
 
 	var info addReactionAction
 	json.Unmarshal([]byte(*payload), &info)
-	token, err := userTokens.GetUser(info.User.ID)
+	token, err := userTokens.Get(info.User.ID)
 
 	if err != nil {
 		if postEphemeralMessage(&info) != nil {
@@ -191,7 +191,7 @@ func postEphemeralMessage(info *addReactionAction) error {
 	q.Add("state", uuid)
 	url.RawQuery = q.Encode()
 
-	temporaryTokens.AddUser(uuid, info.User.ID)
+	temporaryTokens.Add(uuid, info.User.ID)
 
 	jsonMsg := fmt.Sprintf(authorizeButton, environment.GetOauthToken(), info.Channel.ID, info.User.ID, url.String())
 	fmt.Println(jsonMsg)
@@ -221,7 +221,7 @@ func handleOauth(w http.ResponseWriter, req *http.Request) {
 		})
 	fmt.Println(resp.Body)
 
-	userID, err := temporaryTokens.PopUser(state)
+	userID, err := temporaryTokens.Pop(state)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -229,5 +229,5 @@ func handleOauth(w http.ResponseWriter, req *http.Request) {
 	var accessTokenData accessToken
 	unmarshallData(resp.Body, &accessTokenData)
 
-	userTokens.AddUser(userID, accessTokenData.AccessToken)
+	userTokens.Add(userID, accessTokenData.AccessToken)
 }

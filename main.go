@@ -5,7 +5,7 @@ import (
 
 	"reactionbot/environment"
 	"reactionbot/handlers"
-	"reactionbot/storage"
+	"reactionbot/storageonfile"
 )
 
 func main() {
@@ -14,7 +14,7 @@ func main() {
 		panic(err)
 	}
 
-	storage, err := storage.SetUp()
+	storage, err := storageonfile.SetUp()
 	if err != nil {
 		panic(err)
 	}

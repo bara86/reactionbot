@@ -1,9 +1,9 @@
 package commonstructure
 
 type Storage interface {
-	LookupUser(user string) bool
-	AddUser(user string, token string) error
-	RemoveUser(user string) error
-	GetUser(user string) (string, error)
-	PopUser(user string) (string, error)
+	Lookup(code string) bool
+	Add(code string, value string) error
+	Remove(code string) error
+	Get(code string) (string, error)
+	Pop(code string) (string, error)
 }
