@@ -14,10 +14,13 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println("Ready to react!!1!")
+	storage, err := storage.SetUp()
+	if err != nil {
+		panic(err)
+	}
 
-	storage := storage.UserStorage{}
-	if err := handlers.StartServer(&storage); err != nil {
+	fmt.Println("Ready to react!!1!")
+	if err := handlers.StartServer(storage); err != nil {
 		fmt.Println(err)
 	}
 }
