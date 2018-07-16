@@ -3,6 +3,7 @@ package environment
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -14,6 +15,8 @@ const (
 	slackTokenEnv      = "SLACK_TOKEN"
 	connectionPort     = "PORT"
 	slackOauthBotToken = "SLACK_OAUTH_BOT_TOKEN"
+	saveOnFile         = "SAVE_ON_FILE"
+	saveFileName       = "SAVE_FILE_NAME"
 )
 
 func LoadEnvironmentVariables() error {
@@ -32,13 +35,36 @@ func LoadEnvironmentVariables() error {
 func checkEnvVariables() []string {
 
 	var missingVariables []string
-	checkedEnvVariables := []string{clientID, appURL, clientSecret, slackTokenEnv, connectionPort, slackOauthBotToken}
+	checkedEnvVariables := []string{
+		clientID,
+		appURL,
+		clientSecret,
+		slackTokenEnv,
+		connectionPort,
+		slackOauthBotToken,
+		saveOnFile,
+	}
 	for _, envVariable := range checkedEnvVariables {
 		if _, ok := os.LookupEnv(envVariable); !ok {
 			missingVariables = append(missingVariables, envVariable)
 		}
 	}
+
+	if v, _ := GetSaveOnFile(); v {
+		if _, ok := os.LookupEnv(saveFileName); !ok {
+			missingVariables = append(missingVariables, saveFileName)
+		}
+	}
+
 	return missingVariables
+}
+
+func GetSaveOnFile() (bool, error) {
+	return strconv.ParseBool(getEnvVariable(saveOnFile))
+}
+
+func GetSaveFileName() string {
+	return getEnvVariable(saveFileName)
 }
 
 func GetOauthToken() string {
