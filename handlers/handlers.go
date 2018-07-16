@@ -60,22 +60,22 @@ func StartServer(storage commonstructure.Storage) error {
 func handle(w http.ResponseWriter, req *http.Request) {
 
 	var messagetype messageType
-	unmarshallData(req.Body, &messagetype)
+	reader := unmarshallData(req.Body, &messagetype)
 
 	if messagetype.Type == "url_verification" {
-		handleURLVerification(w, req)
+		handleURLVerification(w, reader)
 	} else {
 		if messagetype.Type != "event_callback" {
 			panic(fmt.Sprint("Not `event_callback`", messagetype.Type))
 		}
-		handleEvent(req.Body)
+		handleEvent(reader)
 	}
 
 	w.Write([]byte("GnocchettiAlVapore"))
 
 }
 
-func unmarshallData(reader io.Reader, v interface{}) {
+func unmarshallData(reader io.Reader, v interface{}) io.Reader {
 	var data bytes.Buffer
 	data.ReadFrom(reader)
 	err := json.Unmarshal(data.Bytes(), &v)
@@ -83,12 +83,13 @@ func unmarshallData(reader io.Reader, v interface{}) {
 	if err != nil {
 		fmt.Println("Unable to unmarshal data for type", reflect.TypeOf(v).String())
 	}
+	return bytes.NewBuffer(data.Bytes())
 }
 
-func handleURLVerification(w http.ResponseWriter, req *http.Request) {
+func handleURLVerification(w http.ResponseWriter, reader io.Reader) {
 
 	var urlverification urlVerification
-	unmarshallData(req.Body, &urlverification)
+	unmarshallData(reader, &urlverification)
 
 	if environment.GetSlackToken() != urlverification.Token {
 		http.Error(w, "Unauthorized", http.StatusBadRequest)
