@@ -11,6 +11,7 @@ import (
 
 type UserStorage struct {
 	keys sync.Map
+	lock sync.Mutex
 }
 
 func SetUp() (*UserStorage, error) {
@@ -37,7 +38,9 @@ func (u *UserStorage) setUp() error {
 }
 
 func (u *UserStorage) loadFromFile(fileName string) error {
+	u.lock.Lock()
 	content, err := ioutil.ReadFile(fileName)
+	u.lock.Unlock()
 	if err != nil {
 		return err
 	}
@@ -77,8 +80,11 @@ func (u *UserStorage) saveMap() error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(environment.GetSaveFileName(), marshalled, 0644)
 
+	u.lock.Lock()
+	err = ioutil.WriteFile(environment.GetSaveFileName(), marshalled, 0644)
+	u.lock.Unlock()
+	return err
 }
 
 func (u *UserStorage) Lookup(code string) bool {
