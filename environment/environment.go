@@ -17,6 +17,7 @@ const (
 	slackOauthBotToken = "SLACK_OAUTH_BOT_TOKEN"
 	saveOnFile         = "SAVE_ON_FILE"
 	saveFileName       = "SAVE_FILE_NAME"
+	postgresDBURL      = "DATABASE_URL"
 )
 
 func LoadEnvironmentVariables() error {
@@ -54,6 +55,8 @@ func checkEnvVariables() []string {
 		if _, ok := os.LookupEnv(saveFileName); !ok {
 			missingVariables = append(missingVariables, saveFileName)
 		}
+	} else if _, ok := os.LookupEnv(postgresDBURL); !ok {
+		missingVariables = append(missingVariables, postgresDBURL)
 	}
 
 	return missingVariables
@@ -89,6 +92,10 @@ func GetClientSecret() string {
 
 func GetAppURL() string {
 	return getEnvVariable(appURL)
+}
+
+func GetPostgresDBURL() string {
+	return getEnvVariable(postgresDBURL)
 }
 
 func getEnvVariable(name string) string {

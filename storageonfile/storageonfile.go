@@ -87,9 +87,9 @@ func (u *UserStorage) saveMap() error {
 	return err
 }
 
-func (u *UserStorage) Lookup(code string) bool {
+func (u *UserStorage) Lookup(code string) (bool, error) {
 	_, ok := u.keys.Load(code)
-	return ok
+	return ok, nil
 }
 
 func (u *UserStorage) Add(code string, value string) error {
