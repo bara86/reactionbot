@@ -1,101 +1,107 @@
 package storageondb
 
 import (
+	"database/sql"
 	"fmt"
 
-	"github.com/go-pg/pg"
-
 	"reactionbot/environment"
+
+	"github.com/lib/pq"
 )
-
-const (
-	USERS_TABLE = "users"
-)
-
-type users struct {
-	ID    string
-	Token string
-}
-
-type temporaryUserTokens struct {
-	Uuid   string
-	UserID string
-}
 
 type UserStorageDB struct {
-	db *pg.DB
+	db *sql.DB
 }
 
-func SetUp() (*UserStorageDB, error) {
+func SetUp() (UserStorageDB, error) {
 	userStorage := UserStorageDB{}
 
 	connStr := environment.GetPostgresDBURL()
-	opts, err := pg.ParseURL(connStr)
+	db, err := sql.Open("postgres", connStr)
 
-	if err != nil {
-		return nil, err
+	if err == nil {
+		userStorage.setDB(db)
 	}
-
-	db := pg.Connect(opts)
-
-	userStorage.setDB(db)
-	return &userStorage, nil
+	return userStorage, err
 }
 
-func (u *UserStorageDB) setDB(db *pg.DB) {
+func (u *UserStorageDB) setDB(db *sql.DB) {
 	u.db = db
 }
 
-func (u *UserStorageDB) AddUserToken(id string, token string) error {
-	return u.db.Insert(&users{ID: id, Token: token})
+func (u *UserStorageDB) Add(code string, value string) error {
+	code = pq.QuoteIdentifier(code)
+	value = pq.QuoteIdentifier(value)
+
+	_, err := u.db.Exec("INSERT INTO users VALUES ($1, $2)", code, value)
+
+	return err
 }
 
-func (u *UserStorageDB) LookupUserToken(id string) (bool, error) {
-	user := users{}
-	count, err := u.db.Model(&user).Where("id = ?", id).Count()
+func (u *UserStorageDB) Lookup(code string) (bool, error) {
+	code = pq.QuoteIdentifier(code)
 
+	rows, err := u.db.Query("SELECT COUNT(*) as count FROM users WHERE id=$1", code)
+	defer rows.Close()
+
+	if ok := rows.Next(); !ok {
+		panic("No result for lookup")
+	}
+
+	var count int
+	rows.Scan(&count)
+	if ok := rows.Next(); ok {
+		panic("Too much rows for select count")
+	}
+	return count == 1, err
+}
+
+func (u *UserStorageDB) Remove(code string) error {
+
+	ok, err := u.Lookup(code)
+	fmt.Println("looking for", code, ok, err)
 	if err != nil {
-		return false, nil
-	}
-	if count > 1 {
-		panic(fmt.Sprintf("Wrong count value %d when looking for user %s", count, id))
-	}
-	return count == 1, nil
-}
-
-func (u *UserStorageDB) remove(model interface{}) error {
-	return u.db.Delete(model)
-}
-
-func (u *UserStorageDB) RemoveUserToken(id string) error {
-	found, err := u.LookupUserToken(id)
-
-	if !found {
-		return fmt.Errorf("No user %s in table users", id)
-	} else if err != nil {
 		return err
 	}
-
-	return u.remove(&users{ID: id})
-}
-
-func (u *UserStorageDB) GetUserToken(id string) (string, error) {
-	user := users{ID: id}
-
-	if err := u.db.Select(&user); err != nil {
-		return "", err
+	if !ok {
+		return fmt.Errorf("No code %s", code)
 	}
-	return user.Token, nil
+
+	code = pq.QuoteIdentifier(code)
+	_, err = u.db.Exec("DELETE FROM users WHERE id=$1", code)
+	return err
 }
 
-func (u *UserStorageDB) PopUserToken(id string) (string, error) {
+func (u *UserStorageDB) Get(code string) (string, error) {
 
-	token, err := u.GetUserToken(id)
+	code = pq.QuoteIdentifier(code)
+	rows, err := u.db.Query("SELECT token FROM users WHERE id=$1", code)
+	defer rows.Close()
+
 	if err != nil {
 		return "", err
 	}
-	if err = u.RemoveUserToken(id); err != nil {
+
+	if ok := rows.Next(); !ok {
+		return "", fmt.Errorf("Wrong number of lines to get token from table users")
+	}
+
+	var token string
+	rows.Scan(&token)
+
+	return token, nil
+}
+
+func (u *UserStorageDB) Pop(code string) (string, error) {
+
+	value, err := u.Get(code)
+	if err != nil {
+		return "", fmt.Errorf("Unable to pop %s", code)
+	}
+
+	err = u.Remove(code)
+	if err != nil {
 		return "", err
 	}
-	return token, nil
+	return value, err
 }

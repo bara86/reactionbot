@@ -8,27 +8,36 @@ import (
 	"reactionbot/environment"
 	"reactionbot/handlers"
 	"reactionbot/storageondb"
-)
-
-func main() {
 
 	if err := environment.LoadEnvironmentVariables(); err != nil {
 		panic(err)
 	}
 
-	var storage commonstructure.Storage
+	a, err := storageondb.SetUp()
 
-	saveOnFile, err := environment.GetSaveOnFile()
-	if err != nil {
-		panic(fmt.Sprintf("Wrong format for \"SaveOnFile\" env variable %v", err))
-	}
-
-	if saveOnFile {
-		storage, err = storageonfile.SetUp()
+	if err == nil {
+		fmt.Println("connesso", a)
 	} else {
-		storage, err = storageondb.SetUp()
+		fmt.Println("non connesso", err)
 	}
+	err = a.Add("c", "b")
+	if err != nil {
+		fmt.Println(err)
+	}
+	// panic("dd")
+	val, err := a.Lookup("c")
+	fmt.Println("eeeee", val, err)
 
+	token, err := a.Get("c")
+	fmt.Println("get", val, token)
+
+	err = a.Remove("c")
+	fmt.Println("remove c", err)
+
+	err = a.Remove("k")
+	fmt.Println("remove k", err)
+
+	storage, err := storageonfile.SetUp()
 	if err != nil {
 		panic(err)
 	}
