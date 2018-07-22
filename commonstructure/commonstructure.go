@@ -6,4 +6,7 @@ type Storage interface {
 	Remove(code string) error
 	Get(code string) (string, error)
 	Pop(code string) (string, error)
+
+	LookupUser(id string) (bool, error)
+	AddUser(id string, token string) error
 }

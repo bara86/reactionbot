@@ -190,7 +190,7 @@ func postEphemeralMessage(info *addReactionAction) error {
 	q.Add("state", uuid)
 	url.RawQuery = q.Encode()
 
-	err := dataStorage.AddUserToken(uuid, info.User.ID)
+	err := dataStorage.Add(uuid, info.User.ID)
 	if err != nil {
 		return err
 	}
@@ -231,5 +231,5 @@ func handleOauth(w http.ResponseWriter, req *http.Request) {
 	var accessTokenData accessToken
 	unmarshallData(resp.Body, &accessTokenData)
 
-	dataStorage.AddUserToken(userID, accessTokenData.AccessToken)
+	dataStorage.AddUser(userID, accessTokenData.AccessToken)
 }
