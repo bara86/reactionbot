@@ -190,7 +190,10 @@ func postEphemeralMessage(info *addReactionAction) error {
 	q.Add("state", uuid)
 	url.RawQuery = q.Encode()
 
-	dataStorage.Add(uuid, info.User.ID)
+	err := dataStorage.Add(uuid, info.User.ID)
+	if err != nil {
+		return err
+	}
 
 	jsonMsg := fmt.Sprintf(authorizeButton, environment.GetOauthToken(), info.Channel.ID, info.User.ID, url.String())
 	fmt.Println(jsonMsg)
@@ -228,5 +231,5 @@ func handleOauth(w http.ResponseWriter, req *http.Request) {
 	var accessTokenData accessToken
 	unmarshallData(resp.Body, &accessTokenData)
 
-	dataStorage.Add(userID, accessTokenData.AccessToken)
+	dataStorage.AddUser(userID, accessTokenData.AccessToken)
 }
