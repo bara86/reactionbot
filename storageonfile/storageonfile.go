@@ -87,22 +87,22 @@ func (u *UserStorage) saveMap() error {
 	return err
 }
 
-func (u *UserStorage) Lookup(code string) bool {
+func (u *UserStorage) LookupUserToken(code string) (bool, error) {
 	_, ok := u.keys.Load(code)
-	return ok
+	return ok, nil
 }
 
-func (u *UserStorage) Add(code string, value string) error {
+func (u *UserStorage) AddUserToken(code string, value string) error {
 	u.keys.Store(code, value)
 	return u.saveMap()
 }
 
-func (u *UserStorage) Remove(code string) error {
+func (u *UserStorage) RemoveUserToken(code string) error {
 	u.keys.Delete(code)
 	return u.saveMap()
 }
 
-func (u *UserStorage) Get(code string) (string, error) {
+func (u *UserStorage) GetUserToken(code string) (string, error) {
 	value, ok := u.keys.Load(code)
 	if !ok {
 		return "", fmt.Errorf("No code %s", code)
@@ -111,10 +111,10 @@ func (u *UserStorage) Get(code string) (string, error) {
 	return value.(string), nil
 }
 
-func (u *UserStorage) Pop(code string) (string, error) {
-	value, err := u.Get(code)
+func (u *UserStorage) PopUserToken(code string) (string, error) {
+	value, err := u.GetUserToken(code)
 	if err == nil {
-		u.Remove(code)
+		u.RemoveUserToken(code)
 	}
 	return value, err
 }

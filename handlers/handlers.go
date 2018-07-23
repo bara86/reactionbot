@@ -165,7 +165,7 @@ func addReactionToMessage(payload *string) {
 
 	var info addReactionAction
 	json.Unmarshal([]byte(*payload), &info)
-	token, err := dataStorage.Get(info.User.ID)
+	token, err := dataStorage.GetUserToken(info.User.ID)
 
 	if err != nil {
 		if postEphemeralMessage(&info) != nil {
@@ -190,7 +190,10 @@ func postEphemeralMessage(info *addReactionAction) error {
 	q.Add("state", uuid)
 	url.RawQuery = q.Encode()
 
-	dataStorage.Add(uuid, info.User.ID)
+	err := dataStorage.AddUserToken(uuid, info.User.ID)
+	if err != nil {
+		return err
+	}
 
 	jsonMsg := fmt.Sprintf(authorizeButton, environment.GetOauthToken(), info.Channel.ID, info.User.ID, url.String())
 	fmt.Println(jsonMsg)
@@ -220,7 +223,7 @@ func handleOauth(w http.ResponseWriter, req *http.Request) {
 		})
 	fmt.Println(resp.Body)
 
-	userID, err := dataStorage.Pop(state)
+	userID, err := dataStorage.PopUserToken(state)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -228,5 +231,5 @@ func handleOauth(w http.ResponseWriter, req *http.Request) {
 	var accessTokenData accessToken
 	unmarshallData(resp.Body, &accessTokenData)
 
-	dataStorage.Add(userID, accessTokenData.AccessToken)
+	dataStorage.AddUserToken(userID, accessTokenData.AccessToken)
 }
