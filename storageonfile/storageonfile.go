@@ -87,7 +87,7 @@ func (u *UserStorage) saveMap() error {
 	return err
 }
 
-func (u *UserStorage) Lookup(code string) (bool, error) {
+func (u *UserStorage) LookupUserToken(code string) (bool, error) {
 	_, ok := u.keys.Load(code)
 	return ok, nil
 }
