@@ -17,10 +17,11 @@ import (
 )
 
 const (
-	slackEphemeralURL   = "https://slack.com/api/chat.postEphemeral"
-	slackAddReactionURL = "https://slack.com/api/reactions.add"
-	slackOauthAccessURL = "https://slack.com/api/oauth.access"
-	slackOauthURL       = "slack.com/oauth/authorize"
+	slackEphemeralURL       = "https://slack.com/api/chat.postEphemeral"
+	slackAddReactionURL     = "https://slack.com/api/reactions.add"
+	slackOauthAccessURL     = "https://slack.com/api/oauth.access"
+	slackOauthURL           = "slack.com/oauth/authorize"
+	slackChatPostMessageURL = "https://slack.com/api/chat.postMessage"
 
 	authorizeButton = `{
 		"token": "%v",
@@ -51,14 +52,19 @@ var dataStorage commonstructure.Storage
 func StartServer(storage commonstructure.Storage) error {
 	dataStorage = storage
 
-	http.HandleFunc("/", handle)
 	http.HandleFunc("/actions", handleActions)
 	http.HandleFunc("/oauth", handleOauth)
+	http.HandleFunc("/events", handleEvents)
 	return http.ListenAndServe(fmt.Sprintf(":%s", environment.GetConnectionPort()), nil)
 }
 
-func handle(w http.ResponseWriter, req *http.Request) {
+func askForBotInfo() {
 
+	const botInfoURL = "https://slack.com/api/bots.info"
+
+}
+
+func handleEvents(w http.ResponseWriter, req *http.Request) {
 	var messagetype messageType
 	reader := unmarshallData(req.Body, &messagetype)
 
@@ -68,11 +74,11 @@ func handle(w http.ResponseWriter, req *http.Request) {
 		if messagetype.Type != "event_callback" {
 			panic(fmt.Sprint("Not `event_callback`", messagetype.Type))
 		}
+		fmt.Println("handleevents", messagetype.Token, environment.GetSlackToken(), "ABN6CCSDD")
 		handleEvent(reader)
 	}
 
 	w.Write([]byte("GnocchettiAlVapore"))
-
 }
 
 func unmarshallData(reader io.Reader, v interface{}) io.Reader {
@@ -100,11 +106,11 @@ func handleURLVerification(w http.ResponseWriter, reader io.Reader) {
 }
 
 func postToSlack(token string, url string, w io.Reader) (*http.Response, error) {
-	request, erro := http.NewRequest(http.MethodPost, url, w)
+	request, err := http.NewRequest(http.MethodPost, url, w)
 
-	if erro != nil {
+	if err != nil {
 		fmt.Println("Error creating request")
-		return &http.Response{}, erro
+		return nil, err
 	}
 
 	// Add Authorization token
@@ -116,15 +122,9 @@ func postToSlack(token string, url string, w io.Reader) (*http.Response, error) 
 
 	if clientError != nil {
 		fmt.Println("Errore dal client")
-	} else {
-		var clientRespData clientResponseData
-
-		unmarshallData(clientResponse.Body, &clientRespData)
-
-		if !clientRespData.Ok {
-			fmt.Println("Error send HTTP post request to Slack:", clientRespData.Err)
-		}
+		return nil, clientError
 	}
+
 	return clientResponse, clientError
 }
 
@@ -140,10 +140,33 @@ func handleEvent(data io.Reader) {
 	var msg message
 
 	unmarshallData(data, &msg)
+	if msg.Event.Type == "message" && msg.Event.User != environment.GetBotID() {
+		fmt.Println("user", msg.Event.User)
+		messageToUser := sendMessageToUser{
+			Token:   environment.GetSlackToken(),
+			Channel: msg.Event.Channel,
+			Text:    strings.ToUpper(msg.Event.Text),
+			AsUser:  true,
+		}
 
-	if msg.Event.Type == "message" {
-		go addReaction(environment.GetOauthToken(), "thumbsup", msg.Event.Ts, msg.Event.Channel)
+		marshalled, _ := json.Marshal(messageToUser)
+		stringBuffer := bytes.NewBuffer(marshalled)
+		req, err := postToSlack(environment.GetOauthToken(), slackChatPostMessageURL, stringBuffer)
+
+		var responseData clientResponseData
+		unmarshallData(req.Body, &responseData)
+
+		if !responseData.Ok {
+			fmt.Println("handleEvent error", responseData.Err)
+		}
+		if err != nil {
+			fmt.Println("Handle event error", err)
+		}
 	}
+}
+
+func postMessageToSlack(messageToUser *sendMessageToUser) {
+
 }
 
 func handleActions(w http.ResponseWriter, req *http.Request) {

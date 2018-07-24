@@ -18,6 +18,7 @@ const (
 	saveOnFile         = "SAVE_ON_FILE"
 	saveFileName       = "SAVE_FILE_NAME"
 	postgresDBURL      = "DATABASE_URL"
+	botID              = "BOT_ID"
 )
 
 func LoadEnvironmentVariables() error {
@@ -44,6 +45,7 @@ func checkEnvVariables() []string {
 		connectionPort,
 		slackOauthBotToken,
 		saveOnFile,
+		botID,
 	}
 	for _, envVariable := range checkedEnvVariables {
 		if _, ok := os.LookupEnv(envVariable); !ok {
@@ -96,6 +98,10 @@ func GetAppURL() string {
 
 func GetPostgresDBURL() string {
 	return getEnvVariable(postgresDBURL)
+}
+
+func GetBotID() string {
+	return getEnvVariable(botID)
 }
 
 func getEnvVariable(name string) string {

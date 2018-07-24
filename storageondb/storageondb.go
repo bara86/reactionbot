@@ -27,6 +27,7 @@ type UserStorageDB struct {
 }
 
 func SetUp() (*UserStorageDB, error) {
+
 	userStorage := UserStorageDB{}
 
 	connStr := environment.GetPostgresDBURL()
@@ -55,7 +56,7 @@ func (u *UserStorageDB) LookupUserToken(id string) (bool, error) {
 	count, err := u.db.Model(&user).Where("id = ?", id).Count()
 
 	if err != nil {
-		return false, nil
+		return false, err
 	}
 	if count > 1 {
 		panic(fmt.Sprintf("Wrong count value %d when looking for user %s", count, id))
