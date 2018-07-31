@@ -87,6 +87,10 @@ func (u *UserStorage) saveMap() error {
 	return err
 }
 
+func (u *UserStorage) LoadEmojisList() error {
+	return nil
+}
+
 func (u *UserStorage) LookupUserToken(code string) (bool, error) {
 	_, ok := u.keys.Load(code)
 	return ok, nil
@@ -117,4 +121,12 @@ func (u *UserStorage) PopUserToken(code string) (string, error) {
 		u.RemoveUserToken(code)
 	}
 	return value, err
+}
+
+func (u *UserStorage) LookupEmoji(name string) (bool, error) {
+	return false, fmt.Errorf("Not implemented method")
+}
+
+func (u *UserStorage) AddCustomEmojis(emojisList []string) error {
+	return fmt.Errorf("Not implemented method AddCustomEmojis")
 }

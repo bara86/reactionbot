@@ -6,4 +6,7 @@ type Storage interface {
 	RemoveUserToken(id string) error
 	GetUserToken(id string) (string, error)
 	PopUserToken(id string) (string, error)
+	LoadEmojisList() error
+	LookupEmoji(name string) (bool, error)
+	AddCustomEmojis(emojisList []string) error
 }

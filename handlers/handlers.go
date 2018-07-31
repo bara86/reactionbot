@@ -22,6 +22,7 @@ const (
 	slackOauthAccessURL     = "https://slack.com/api/oauth.access"
 	slackOauthURL           = "slack.com/oauth/authorize"
 	slackChatPostMessageURL = "https://slack.com/api/chat.postMessage"
+	slackGetEmojisListURL   = "https://slack.com/api/emoji.list"
 
 	authorizeButton = `{
 		"token": "%v",
@@ -52,16 +53,36 @@ var dataStorage commonstructure.Storage
 func StartServer(storage commonstructure.Storage) error {
 	dataStorage = storage
 
+	if err := loadCustomEmojis(); err != nil {
+		return err
+	}
+
 	http.HandleFunc("/actions", handleActions)
 	http.HandleFunc("/oauth", handleOauth)
 	http.HandleFunc("/events", handleEvents)
 	return http.ListenAndServe(fmt.Sprintf(":%s", environment.GetConnectionPort()), nil)
 }
 
-func askForBotInfo() {
+func loadCustomEmojis() error {
+	resp, err := http.PostForm(slackGetEmojisListURL,
+		url.Values{
+			"token": {environment.GetOauthAccessToken()},
+		})
 
-	const botInfoURL = "https://slack.com/api/bots.info"
+	if err != nil {
+		return err
+	}
 
+	var responseJSON map[string]interface{}
+	unmarshallData(resp.Body, &responseJSON)
+
+	emojis := responseJSON["emoji"].(map[string]interface{})
+	var emojisList []string
+	for k := range emojis {
+		emojisList = append(emojisList, k)
+	}
+
+	return dataStorage.AddCustomEmojis(emojisList)
 }
 
 func handleEvents(w http.ResponseWriter, req *http.Request) {
@@ -74,7 +95,6 @@ func handleEvents(w http.ResponseWriter, req *http.Request) {
 		if messagetype.Type != "event_callback" {
 			panic(fmt.Sprint("Not `event_callback`", messagetype.Type))
 		}
-		fmt.Println("handleevents", messagetype.Token, environment.GetSlackToken(), "ABN6CCSDD")
 		handleEvent(reader)
 	}
 
@@ -141,7 +161,7 @@ func handleEvent(data io.Reader) {
 
 	unmarshallData(data, &msg)
 	if msg.Event.Type == "message" && msg.Event.User != environment.GetBotID() {
-		fmt.Println("user", msg.Event.User)
+		fmt.Println("DDDDD", msg.Event.Text)
 		messageToUser := sendMessageToUser{
 			Token:   environment.GetSlackToken(),
 			Channel: msg.Event.Channel,
@@ -165,7 +185,7 @@ func handleEvent(data io.Reader) {
 	}
 }
 
-func postMessageToSlack(messageToUser *sendMessageToUser) {
+func parseMessage(msg message) {
 
 }
 
