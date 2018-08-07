@@ -9,7 +9,7 @@ type addReactionActionUser struct {
 	Name string
 }
 
-type sendMessageToUser struct {
+type sendMessageToUserStruct struct {
 	Token   string `json:"token"`
 	Channel string `json:"channel"`
 	Text    string `json:"text"`

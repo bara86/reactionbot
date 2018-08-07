@@ -160,33 +160,85 @@ func handleEvent(data io.Reader) {
 	var msg message
 
 	unmarshallData(data, &msg)
+	if parseMessage(msg) {
+		return
+	}
+
 	if msg.Event.Type == "message" && msg.Event.User != environment.GetBotID() {
 		fmt.Println("DDDDD", msg.Event.Text)
-		messageToUser := sendMessageToUser{
-			Token:   environment.GetSlackToken(),
-			Channel: msg.Event.Channel,
-			Text:    strings.ToUpper(msg.Event.Text),
-			AsUser:  true,
-		}
-
-		marshalled, _ := json.Marshal(messageToUser)
-		stringBuffer := bytes.NewBuffer(marshalled)
-		req, err := postToSlack(environment.GetOauthToken(), slackChatPostMessageURL, stringBuffer)
-
-		var responseData clientResponseData
-		unmarshallData(req.Body, &responseData)
-
-		if !responseData.Ok {
-			fmt.Println("handleEvent error", responseData.Err)
-		}
-		if err != nil {
-			fmt.Println("Handle event error", err)
-		}
+		sendMessageToUser(strings.ToUpper(msg.Event.Text), msg.Event.Channel)
 	}
 }
 
-func parseMessage(msg message) {
+func sendMessageToUser(message string, channel string) {
+	messageToUser := sendMessageToUserStruct{
+		Token:   environment.GetSlackToken(),
+		Channel: channel,
+		Text:    message,
+		AsUser:  true,
+	}
 
+	marshalled, _ := json.Marshal(messageToUser)
+	stringBuffer := bytes.NewBuffer(marshalled)
+	req, err := postToSlack(environment.GetOauthToken(), slackChatPostMessageURL, stringBuffer)
+
+	var responseData clientResponseData
+	unmarshallData(req.Body, &responseData)
+
+	if !responseData.Ok {
+		fmt.Println("handleEvent error", responseData.Err)
+	}
+	if err != nil {
+		fmt.Println("Handle event error", err)
+	}
+}
+
+func parseMessage(msg message) bool {
+	text := msg.Event.Text
+
+	if strings.HasPrefix(text, "list groups") {
+		handleListGroups(msg)
+		return true
+	} else if strings.HasPrefix(text, "list emojis") {
+		handleListEmojisForGroup(msg)
+		return true
+	}
+	return false
+}
+
+func handleListEmojisForGroup(msg message) {
+	split := strings.Split(msg.Event.Text, " ")
+	group := split[len(split)-1]
+
+	userGroups := dataStorage.GetGroupsForUser(msg.Event.User)
+	found := false
+
+	for _, userGroup := range userGroups {
+		if userGroup == group {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		sendMessageToUser("Group not found", msg.Event.Channel)
+		return
+	}
+
+	emojis := dataStorage.GetEmojisForUserForGroup(msg.Event.User, group)
+
+	if len(emojis) == 0 {
+		sendMessageToUser(fmt.Sprintf("No emojis for group %s", group), msg.Event.Channel)
+		return
+	}
+
+	sendMessageToUser(strings.Join(emojis, " "), msg.Event.Channel)
+}
+
+func handleListGroups(msg message) {
+	groupsList := dataStorage.GetGroupsForUser(msg.Event.User)
+
+	sendMessageToUser(strings.Join(groupsList, ", "), msg.Event.Channel)
 }
 
 func handleActions(w http.ResponseWriter, req *http.Request) {

@@ -9,4 +9,6 @@ type Storage interface {
 	LoadEmojisList() error
 	LookupEmoji(name string) (bool, error)
 	AddCustomEmojis(emojisList []string) error
+	GetGroupsForUser(id string) []string
+	GetEmojisForUserForGroup(userID string, groupName string) []string
 }

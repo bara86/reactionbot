@@ -33,6 +33,48 @@ type emojis struct {
 	Name string
 }
 
+type groups struct {
+	Iduser    string
+	Groupname string
+}
+
+type groupsemojis struct {
+	Groupname string
+	Userid    string
+	Emojiname string
+}
+
+func (u *UserStorageDB) GetGroupsForUser(id string) []string {
+	var grps []groups
+	err := u.db.Model(&grps).Where("iduser = ?", id).Select()
+
+	var groupList []string
+	if err != nil {
+		return groupList
+	}
+
+	for _, grp := range grps {
+		groupList = append(groupList, grp.Groupname)
+	}
+	return groupList
+}
+
+func (u *UserStorageDB) GetEmojisForUserForGroup(userID string, groupName string) []string {
+
+	var grpEmoji []groupsemojis
+	err := u.db.Model(&grpEmoji).Where("userid = ? and groupname = ?", userID, groupName).Select()
+
+	var groupList []string
+	if err != nil {
+		return groupList
+	}
+
+	for _, grp := range grpEmoji {
+		groupList = append(groupList, fmt.Sprintf(":%s:", grp.Emojiname))
+	}
+	return groupList
+}
+
 func SetUp() (*UserStorageDB, error) {
 
 	userStorage := UserStorageDB{}

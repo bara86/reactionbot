@@ -130,3 +130,11 @@ func (u *UserStorage) LookupEmoji(name string) (bool, error) {
 func (u *UserStorage) AddCustomEmojis(emojisList []string) error {
 	return fmt.Errorf("Not implemented method AddCustomEmojis")
 }
+
+func (u *UserStorage) GetGroupsForUser(id string) []string {
+	return []string{}
+}
+
+func (u *UserStorage) GetEmojisForUserForGroup(userID string, groupName string) []string {
+	return []string{}
+}
