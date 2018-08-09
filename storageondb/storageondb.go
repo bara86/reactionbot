@@ -70,7 +70,7 @@ func (u *UserStorageDB) GetEmojisForUserForGroup(userID string, groupName string
 	}
 
 	for _, grp := range grpEmoji {
-		groupList = append(groupList, fmt.Sprintf(":%s:", grp.Emojiname))
+		groupList = append(groupList, grp.Emojiname)
 	}
 	return groupList
 }

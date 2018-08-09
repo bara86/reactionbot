@@ -305,7 +305,10 @@ func handleListEmojisForGroup(msg message) {
 		return
 	}
 
-	emojis := dataStorage.GetEmojisForUserForGroup(msg.Event.User, group)
+	var emojis []string
+	for _, emojiName := range dataStorage.GetEmojisForUserForGroup(msg.Event.User, group) {
+		emojis = append(emojis, fmt.Sprintf(":%s:", emojiName))
+	}
 
 	if len(emojis) == 0 {
 		sendMessageToUser(fmt.Sprintf("No emojis for group %s", group), msg.Event.Channel)
@@ -347,7 +350,13 @@ func addReactionToMessage(payload *string) {
 
 		}
 	} else {
-		addReaction(token, "heart", info.Message.Timestamp, info.Channel.ID)
+		userGroups := dataStorage.GetGroupsForUser(info.User.ID)
+		if len(userGroups) == 0 {
+			return
+		}
+		for _, emoji := range dataStorage.GetEmojisForUserForGroup(info.User.ID, userGroups[0]) {
+			addReaction(token, emoji, info.Message.Timestamp, info.Channel.ID)
+		}
 	}
 
 }
