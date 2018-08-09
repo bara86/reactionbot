@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"reactionbot/commonstructure"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"reactionbot/environment"
@@ -46,6 +47,8 @@ const (
 	}`
 
 	reactionsWriteScope = "reactions:write"
+
+	addEmojiRegex = `(?m)add\s+:(\w+):\s+to\s+(\w+)`
 )
 
 var dataStorage commonstructure.Storage
@@ -193,6 +196,16 @@ func sendMessageToUser(message string, channel string) {
 	}
 }
 
+func parseRegex(text string, regex string) []string {
+	re := regexp.MustCompile(regex)
+
+	match := re.FindStringSubmatch(text)
+	if len(match) == 0 {
+		return match
+	}
+	return match[1:]
+}
+
 func parseMessage(msg message) bool {
 	text := msg.Event.Text
 
@@ -202,8 +215,75 @@ func parseMessage(msg message) bool {
 	} else if strings.HasPrefix(text, "list emojis") {
 		handleListEmojisForGroup(msg)
 		return true
+	} else if strings.HasPrefix(text, "create group") {
+		handleCreateNewGroup(msg)
+		return true
+	} else if match := parseRegex(text, addEmojiRegex); len(match) > 0 {
+		handleAddEmojiToGroup(match[0], match[1], msg)
+		return true
 	}
 	return false
+}
+
+func handleAddEmojiToGroup(emojiName string, groupName string, msg message) {
+	userGroups := dataStorage.GetGroupsForUser(msg.Event.User)
+	found := false
+
+	for _, userGroup := range userGroups {
+		if userGroup == groupName {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		sendMessageToUser("Group not found", msg.Event.Channel)
+		return
+	}
+
+	fmt.Println("user want to add emoji", emojiName)
+	found, err := dataStorage.LookupEmoji(emojiName)
+
+	if err != nil {
+		sendMessageToUser("Error find the emoji", msg.Event.Channel)
+		return
+	} else if found == false {
+		sendMessageToUser("Wrong emoji", msg.Event.Channel)
+		return
+	}
+
+	if err := dataStorage.AddEmojiForGroupForUser(emojiName, groupName, msg.Event.User); err != nil {
+		sendMessageToUser("Unable to save emoji for group", msg.Event.Channel)
+		return
+	}
+
+	sendMessageToUser("Emoji add to group", msg.Event.Channel)
+}
+
+func handleCreateNewGroup(msg message) {
+	split := strings.Split(msg.Event.Text, " ")
+	group := split[len(split)-1]
+
+	userGroups := dataStorage.GetGroupsForUser(msg.Event.User)
+	found := false
+
+	for _, userGroup := range userGroups {
+		if userGroup == group {
+			found = true
+			break
+		}
+	}
+
+	if found {
+		sendMessageToUser("Group already created", msg.Event.Channel)
+		return
+	}
+
+	if err := dataStorage.AddGroupForUser(msg.Event.User, group); err != nil {
+		sendMessageToUser("Couldn't create group", msg.Event.Channel)
+	} else {
+		sendMessageToUser("Group created", msg.Event.Channel)
+	}
 }
 
 func handleListEmojisForGroup(msg message) {

@@ -138,3 +138,11 @@ func (u *UserStorage) GetGroupsForUser(id string) []string {
 func (u *UserStorage) GetEmojisForUserForGroup(userID string, groupName string) []string {
 	return []string{}
 }
+
+func (u *UserStorage) AddGroupForUser(idUser string, groupName string) error {
+	return fmt.Errorf("Not implemented method AddGroupForUser")
+}
+
+func (u *UserStorage) AddEmojiForGroupForUser(emojiName string, groupName string, idUser string) error {
+	return fmt.Errorf("Not implemented method AddEmojiForGroupForUser")
+}

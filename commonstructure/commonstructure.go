@@ -11,4 +11,6 @@ type Storage interface {
 	AddCustomEmojis(emojisList []string) error
 	GetGroupsForUser(id string) []string
 	GetEmojisForUserForGroup(userID string, groupName string) []string
+	AddGroupForUser(idUser string, groupName string) error
+	AddEmojiForGroupForUser(emojiName string, groupName string, idUser string) error
 }

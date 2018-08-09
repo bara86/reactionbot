@@ -142,6 +142,14 @@ func (u *UserStorageDB) LoadEmojisList() error {
 	return nil
 }
 
+func (u *UserStorageDB) AddGroupForUser(idUser string, groupName string) error {
+	return u.db.Insert(&groups{Iduser: idUser, Groupname: groupName})
+}
+
+func (u *UserStorageDB) AddEmojiForGroupForUser(emojiName string, groupName string, idUser string) error {
+	return u.db.Insert(&groupsemojis{Groupname: groupName, Userid: idUser, Emojiname: emojiName})
+}
+
 func (u *UserStorageDB) AddUserToken(id string, token string) error {
 	return u.db.Insert(&users{ID: id, Token: token})
 }
