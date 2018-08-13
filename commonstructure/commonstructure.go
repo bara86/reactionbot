@@ -13,4 +13,5 @@ type Storage interface {
 	GetEmojisForUserForGroup(userID string, groupName string) []string
 	AddGroupForUser(idUser string, groupName string) error
 	AddEmojiForGroupForUser(emojiName string, groupName string, idUser string) error
+	RemoveEmojiFromGroupForUser(emojiName string, groupName string, idUser string) error
 }

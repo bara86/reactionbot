@@ -146,3 +146,7 @@ func (u *UserStorage) AddGroupForUser(idUser string, groupName string) error {
 func (u *UserStorage) AddEmojiForGroupForUser(emojiName string, groupName string, idUser string) error {
 	return fmt.Errorf("Not implemented method AddEmojiForGroupForUser")
 }
+
+func (u *UserStorage) RemoveEmojiFromGroupForUser(emojiName string, groupName string, idUser string) error {
+	return fmt.Errorf("Not implemented method RemoveEmojiFromGroupForUser")
+}

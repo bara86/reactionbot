@@ -194,3 +194,14 @@ func (u *UserStorageDB) PopUserToken(id string) (string, error) {
 	}
 	return token, nil
 }
+
+func (u *UserStorageDB) RemoveEmojiFromGroupForUser(emojiName string, groupName string, idUser string) error {
+	emojiToBeRemoved := groupsemojis{Userid: idUser, Emojiname: emojiName, Groupname: groupName}
+
+	_, err := u.db.Model(&emojiToBeRemoved).
+		Where("userid = ?userid").
+		Where("emojiname = ?emojiname").
+		Where("groupname = ?groupname").Delete()
+
+	return err
+}

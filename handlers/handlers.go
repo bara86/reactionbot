@@ -48,7 +48,8 @@ const (
 
 	reactionsWriteScope = "reactions:write"
 
-	addEmojiRegex = `(?m)add\s+:(\w+):\s+to\s+(\w+)`
+	addEmojiRegex    = `(?m)add\s+:(\w+):\s+to\s+(\w+)`
+	removeEmojiRegex = `(?m)remove\s+:(\w+):\s+from\s+(\w+)`
 )
 
 var dataStorage commonstructure.Storage
@@ -221,8 +222,59 @@ func parseMessage(msg message) bool {
 	} else if match := parseRegex(text, addEmojiRegex); len(match) > 0 {
 		handleAddEmojiToGroup(match[0], match[1], msg)
 		return true
+	} else if match := parseRegex(text, removeEmojiRegex); len(match) > 0 {
+		handleRemoveEmojiFromGroup(match[0], match[1], msg)
+		return true
 	}
 	return false
+}
+
+func handleRemoveEmojiFromGroup(emojiName string, groupName string, msg message) {
+	userGroups := dataStorage.GetGroupsForUser(msg.Event.User)
+	found := false
+
+	for _, userGroup := range userGroups {
+		if userGroup == groupName {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		sendMessageToUser("Group not found", msg.Event.Channel)
+		return
+	}
+
+	found, err := dataStorage.LookupEmoji(emojiName)
+
+	if err != nil {
+		sendMessageToUser("Error find the emoji", msg.Event.Channel)
+		return
+	} else if found == false {
+		sendMessageToUser("Wrong emoji", msg.Event.Channel)
+		return
+	}
+
+	emojisForUserForGroup := dataStorage.GetEmojisForUserForGroup(msg.Event.User, groupName)
+
+	for _, emoji := range emojisForUserForGroup {
+		if emoji == emojiName {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		sendMessageToUser("Emoji not in group", msg.Event.Channel)
+		return
+	}
+
+	if err := dataStorage.RemoveEmojiFromGroupForUser(emojiName, groupName, msg.Event.User); err != nil {
+		sendMessageToUser("Unable to remove emoji", msg.Event.Channel)
+		return
+	}
+
+	sendMessageToUser("Emoji removed from group", msg.Event.Channel)
 }
 
 func handleAddEmojiToGroup(emojiName string, groupName string, msg message) {
