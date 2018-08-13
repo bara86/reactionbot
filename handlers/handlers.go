@@ -219,6 +219,9 @@ func parseMessage(msg message) bool {
 	} else if strings.HasPrefix(text, "create group") {
 		handleCreateNewGroup(msg)
 		return true
+	} else if strings.HasPrefix(text, "remove group") {
+		handleRemoveGroupForUser(msg)
+		return true
 	} else if match := parseRegex(text, addEmojiRegex); len(match) > 0 {
 		handleAddEmojiToGroup(match[0], match[1], msg)
 		return true
@@ -227,6 +230,28 @@ func parseMessage(msg message) bool {
 		return true
 	}
 	return false
+}
+
+func handleRemoveGroupForUser(msg message) {
+	groups := strings.Split(msg.Event.Text, " ")
+	group := groups[len(groups)-1]
+	found, err := dataStorage.LookupForUserGroup(msg.Event.User, group)
+
+	if err != nil {
+		sendMessageToUser("Error on removing group", msg.Event.Channel)
+		return
+	} else if !found {
+		sendMessageToUser(fmt.Sprintf("No groups %s available", group), msg.Event.Channel)
+		return
+	}
+
+	err = dataStorage.RemoveGroupForUser(msg.Event.User, group)
+	if err != nil {
+		sendMessageToUser("Unable to remove emoji from group", msg.Event.Channel)
+		return
+	}
+
+	sendMessageToUser("Emojis removed from group", msg.Event.Channel)
 }
 
 func handleRemoveEmojiFromGroup(emojiName string, groupName string, msg message) {

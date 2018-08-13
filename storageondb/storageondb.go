@@ -158,10 +158,6 @@ func (u *UserStorageDB) LookupUserToken(id string) (bool, error) {
 	return u.lookup(&users{}, "id", id)
 }
 
-func (u *UserStorageDB) remove(model interface{}) error {
-	return u.db.Delete(model)
-}
-
 func (u *UserStorageDB) RemoveUserToken(id string) error {
 	found, err := u.LookupUserToken(id)
 
@@ -171,7 +167,7 @@ func (u *UserStorageDB) RemoveUserToken(id string) error {
 		return err
 	}
 
-	return u.remove(&users{ID: id})
+	return u.remove(&users{ID: id}, nil)
 }
 
 func (u *UserStorageDB) GetUserToken(id string) (string, error) {
@@ -204,4 +200,40 @@ func (u *UserStorageDB) RemoveEmojiFromGroupForUser(emojiName string, groupName 
 		Where("groupname = ?groupname").Delete()
 
 	return err
+}
+
+func (u *UserStorageDB) lookup2(table interface{}, keys []string) (bool, error) {
+	model := u.db.Model(table)
+
+	for _, key := range keys {
+		keyStr := fmt.Sprintf("%s = ?%s", key, key)
+		model = model.Where(keyStr)
+	}
+
+	count, err := model.Count()
+	if err != nil {
+		return false, err
+	}
+
+	return count == 1, nil
+}
+
+func (u *UserStorageDB) remove(table interface{}, keys []string) error {
+	model := u.db.Model(table)
+
+	for _, key := range keys {
+		model = model.Where(fmt.Sprintf("%s = ?%s", key, key))
+	}
+
+	_, err := model.Delete()
+	return err
+}
+
+func (u *UserStorageDB) LookupForUserGroup(userID string, groupName string) (bool, error) {
+
+	return u.lookup2(&groups{Groupname: groupName, Iduser: userID}, []string{"groupname", "iduser"})
+}
+
+func (u *UserStorageDB) RemoveGroupForUser(userID string, groupName string) error {
+	return u.remove(&groups{Iduser: userID, Groupname: groupName}, []string{"iduser", "groupname"})
 }
