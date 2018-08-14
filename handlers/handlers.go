@@ -232,20 +232,29 @@ func parseMessage(msg message) bool {
 	return false
 }
 
-func handleRemoveGroupForUser(msg message) {
-	groups := strings.Split(msg.Event.Text, " ")
-	group := groups[len(groups)-1]
-	found, err := dataStorage.LookupForUserGroup(msg.Event.User, group)
+func checkGroupForUserExists(groupName string, msg message) bool {
+	found, err := dataStorage.LookupForUserGroup(msg.Event.User, groupName)
 
 	if err != nil {
 		sendMessageToUser("Error on removing group", msg.Event.Channel)
-		return
+		return false
 	} else if !found {
-		sendMessageToUser(fmt.Sprintf("No groups %s available", group), msg.Event.Channel)
+		sendMessageToUser(fmt.Sprintf("No groups %s available", groupName), msg.Event.Channel)
+		return false
+	}
+
+	return true
+}
+
+func handleRemoveGroupForUser(msg message) {
+	groups := strings.Split(msg.Event.Text, " ")
+	group := groups[len(groups)-1]
+
+	if !checkGroupForUserExists(group, msg) {
 		return
 	}
 
-	err = dataStorage.RemoveGroupForUser(msg.Event.User, group)
+	err := dataStorage.RemoveGroupForUser(msg.Event.User, group)
 	if err != nil {
 		sendMessageToUser("Unable to remove emoji from group", msg.Event.Channel)
 		return
@@ -255,18 +264,7 @@ func handleRemoveGroupForUser(msg message) {
 }
 
 func handleRemoveEmojiFromGroup(emojiName string, groupName string, msg message) {
-	userGroups := dataStorage.GetGroupsForUser(msg.Event.User)
-	found := false
-
-	for _, userGroup := range userGroups {
-		if userGroup == groupName {
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		sendMessageToUser("Group not found", msg.Event.Channel)
+	if !checkGroupForUserExists(groupName, msg) {
 		return
 	}
 
@@ -303,18 +301,7 @@ func handleRemoveEmojiFromGroup(emojiName string, groupName string, msg message)
 }
 
 func handleAddEmojiToGroup(emojiName string, groupName string, msg message) {
-	userGroups := dataStorage.GetGroupsForUser(msg.Event.User)
-	found := false
-
-	for _, userGroup := range userGroups {
-		if userGroup == groupName {
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		sendMessageToUser("Group not found", msg.Event.Channel)
+	if !checkGroupForUserExists(groupName, msg) {
 		return
 	}
 
@@ -341,18 +328,7 @@ func handleCreateNewGroup(msg message) {
 	split := strings.Split(msg.Event.Text, " ")
 	group := split[len(split)-1]
 
-	userGroups := dataStorage.GetGroupsForUser(msg.Event.User)
-	found := false
-
-	for _, userGroup := range userGroups {
-		if userGroup == group {
-			found = true
-			break
-		}
-	}
-
-	if found {
-		sendMessageToUser("Group already created", msg.Event.Channel)
+	if !checkGroupForUserExists(group, msg) {
 		return
 	}
 
@@ -367,18 +343,7 @@ func handleListEmojisForGroup(msg message) {
 	split := strings.Split(msg.Event.Text, " ")
 	group := split[len(split)-1]
 
-	userGroups := dataStorage.GetGroupsForUser(msg.Event.User)
-	found := false
-
-	for _, userGroup := range userGroups {
-		if userGroup == group {
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		sendMessageToUser("Group not found", msg.Event.Channel)
+	if !checkGroupForUserExists(group, msg) {
 		return
 	}
 
