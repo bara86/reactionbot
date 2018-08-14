@@ -2,7 +2,6 @@ package storageondb
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/go-pg/pg"
@@ -96,19 +95,6 @@ func (u *UserStorageDB) setDB(db *pg.DB) {
 	u.db = db
 }
 
-func (u *UserStorageDB) lookup(table interface{}, idName string, idValue string) (bool, error) {
-	whereString := fmt.Sprintf(whereStringTemplate, idName)
-
-	count, err := u.db.Model(table).Where(whereString, idValue).Count()
-	if err != nil {
-		return false, err
-	}
-	if count > 1 {
-		return false, fmt.Errorf("Wrong count value %d when looking for %s with id %s", count, reflect.TypeOf(table).Name(), idValue)
-	}
-	return count == 1, nil
-}
-
 func (u *UserStorageDB) AddCustomEmojis(emojisList []string) error {
 	for _, emojiName := range emojisList {
 		found, err := u.LookupEmoji(emojiName)
@@ -124,7 +110,7 @@ func (u *UserStorageDB) AddCustomEmojis(emojisList []string) error {
 }
 
 func (u *UserStorageDB) LookupEmoji(name string) (bool, error) {
-	return u.lookup(&emojis{}, "name", name)
+	return u.lookup(&emojis{Name: name}, []string{"name"})
 }
 
 func (u *UserStorageDB) LoadEmojisList() error {
@@ -155,7 +141,7 @@ func (u *UserStorageDB) AddUserToken(id string, token string) error {
 }
 
 func (u *UserStorageDB) LookupUserToken(id string) (bool, error) {
-	return u.lookup(&users{}, "id", id)
+	return u.lookup(&users{ID: id}, []string{"id"})
 }
 
 func (u *UserStorageDB) RemoveUserToken(id string) error {
@@ -202,7 +188,7 @@ func (u *UserStorageDB) RemoveEmojiFromGroupForUser(emojiName string, groupName 
 	return err
 }
 
-func (u *UserStorageDB) lookup2(table interface{}, keys []string) (bool, error) {
+func (u *UserStorageDB) lookup(table interface{}, keys []string) (bool, error) {
 	model := u.db.Model(table)
 
 	for _, key := range keys {
@@ -231,7 +217,7 @@ func (u *UserStorageDB) remove(table interface{}, keys []string) error {
 
 func (u *UserStorageDB) LookupForUserGroup(userID string, groupName string) (bool, error) {
 
-	return u.lookup2(&groups{Groupname: groupName, Iduser: userID}, []string{"groupname", "iduser"})
+	return u.lookup(&groups{Groupname: groupName, Iduser: userID}, []string{"groupname", "iduser"})
 }
 
 func (u *UserStorageDB) RemoveGroupForUser(userID string, groupName string) error {
