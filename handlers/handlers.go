@@ -246,6 +246,18 @@ func checkGroupForUserExists(groupName string, msg message) bool {
 	return true
 }
 
+func checkEmoji(emojiName string, msg message) bool {
+	found, err := dataStorage.LookupEmoji(emojiName)
+
+	if err != nil {
+		sendMessageToUser("Error find the emoji", msg.Event.Channel)
+		return false
+	} else if found == false {
+		sendMessageToUser("Wrong emoji", msg.Event.Channel)
+	}
+	return found
+}
+
 func handleRemoveGroupForUser(msg message) {
 	groups := strings.Split(msg.Event.Text, " ")
 	group := groups[len(groups)-1]
@@ -268,18 +280,13 @@ func handleRemoveEmojiFromGroup(emojiName string, groupName string, msg message)
 		return
 	}
 
-	found, err := dataStorage.LookupEmoji(emojiName)
-
-	if err != nil {
-		sendMessageToUser("Error find the emoji", msg.Event.Channel)
-		return
-	} else if found == false {
-		sendMessageToUser("Wrong emoji", msg.Event.Channel)
+	if !checkEmoji(emojiName, msg) {
 		return
 	}
 
 	emojisForUserForGroup := dataStorage.GetEmojisForUserForGroup(msg.Event.User, groupName)
 
+	found := false
 	for _, emoji := range emojisForUserForGroup {
 		if emoji == emojiName {
 			found = true
@@ -306,13 +313,7 @@ func handleAddEmojiToGroup(emojiName string, groupName string, msg message) {
 	}
 
 	fmt.Println("user want to add emoji", emojiName)
-	found, err := dataStorage.LookupEmoji(emojiName)
-
-	if err != nil {
-		sendMessageToUser("Error find the emoji", msg.Event.Channel)
-		return
-	} else if found == false {
-		sendMessageToUser("Wrong emoji", msg.Event.Channel)
+	if !checkEmoji(emojiName, msg) {
 		return
 	}
 
