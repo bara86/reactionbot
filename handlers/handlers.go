@@ -50,6 +50,13 @@ const (
 
 	addEmojiRegex    = `(?m)add\s+:(\w+):\s+to\s+(\w+)`
 	removeEmojiRegex = `(?m)remove\s+:(\w+):\s+from\s+(\w+)`
+
+	helpMessage = "`list groups` - list your groups\n" +
+		"`list emojis groupName` - list the emojis for the given group _groupName_\n" +
+		"`create group groupName` - create a new group called _groupName_\n" +
+		"`remove group groupName` - delete the group called _groupName_ (if available)\n" +
+		"`add emoji to groupName` - add _emoji_ to your previously created group _groupName_\n" +
+		"`remove emoji from groupName` - remove _emoji_ from your group _groupName_\n"
 )
 
 var dataStorage commonstructure.Storage
@@ -164,14 +171,7 @@ func handleEvent(data io.Reader) {
 	var msg message
 
 	unmarshallData(data, &msg)
-	if parseMessage(msg) {
-		return
-	}
-
-	if msg.Event.Type == "message" && msg.Event.User != environment.GetBotID() {
-		fmt.Println("DDDDD", msg.Event.Text)
-		sendMessageToUser(strings.ToUpper(msg.Event.Text), msg.Event.Channel)
-	}
+	handleMessage(msg)
 }
 
 func sendMessageToUser(message string, channel string) {
@@ -207,10 +207,29 @@ func parseRegex(text string, regex string) []string {
 	return match[1:]
 }
 
+func sendHelpToUser(msg message) {
+	sendMessageToUser(helpMessage, msg.Event.Channel)
+}
+
+func handleMessage(msg message) {
+	if msg.Event.User == environment.GetBotID() {
+		return
+	}
+
+	if parseMessage(msg) {
+		return
+	}
+
+	sendHelpToUser(msg)
+}
+
 func parseMessage(msg message) bool {
 	text := msg.Event.Text
 
-	if strings.HasPrefix(text, "list groups") {
+	if text == "help" {
+		sendHelpToUser(msg)
+		return true
+	} else if strings.HasPrefix(text, "list groups") {
 		handleListGroups(msg)
 		return true
 	} else if strings.HasPrefix(text, "list emojis") {
