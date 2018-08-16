@@ -153,7 +153,7 @@ func (u *UserStorageDB) RemoveUserToken(id string) error {
 		return err
 	}
 
-	return u.remove(&users{ID: id}, nil)
+	return u.remove(&users{ID: id}, []string{"id"})
 }
 
 func (u *UserStorageDB) GetUserToken(id string) (string, error) {
