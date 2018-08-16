@@ -287,11 +287,11 @@ func handleRemoveGroupForUser(msg message) {
 
 	err := dataStorage.RemoveGroupForUser(msg.Event.User, group)
 	if err != nil {
-		sendMessageToUser("Unable to remove emoji from group", msg.Event.Channel)
+		sendMessageToUser("Unable to remove group", msg.Event.Channel)
 		return
 	}
 
-	sendMessageToUser("Emojis removed from group", msg.Event.Channel)
+	sendMessageToUser("Group removed", msg.Event.Channel)
 }
 
 func handleRemoveEmojiFromGroup(emojiName string, groupName string, msg message) {
