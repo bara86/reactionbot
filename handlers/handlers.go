@@ -48,8 +48,8 @@ const (
 
 	reactionsWriteScope = "reactions:write"
 
-	addEmojiRegex    = `(?m)add\s+:(\w+):\s+to\s+(\w+)`
-	removeEmojiRegex = `(?m)remove\s+:(\w+):\s+from\s+(\w+)`
+	addEmojiRegex    = `(?m)add\s+:(\w+):\s+to\s+([\p{L}\d_]+)`
+	removeEmojiRegex = `(?m)remove\s+:(\w+):\s+from\s+([\p{L}\d_]+)`
 
 	helpMessage = "`list groups` - list your groups\n" +
 		"`list emojis groupName` - list the emojis for the given group _groupName_\n" +
