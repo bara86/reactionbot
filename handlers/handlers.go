@@ -348,7 +348,8 @@ func handleCreateNewGroup(msg message) {
 	split := strings.Split(msg.Event.Text, " ")
 	group := split[len(split)-1]
 
-	if !checkGroupForUserExists(group, msg) {
+	if checkGroupForUserExists(group, msg) {
+		sendMessageToUser("Group already created", msg.Event.Channel)
 		return
 	}
 
