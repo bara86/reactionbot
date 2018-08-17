@@ -251,14 +251,18 @@ func parseMessage(msg message) bool {
 	return false
 }
 
-func checkGroupForUserExists(groupName string, msg message) bool {
+func checkGroupForUserExists(groupName string, msg message, sendMessage bool) bool {
 	found, err := dataStorage.LookupForUserGroup(msg.Event.User, groupName)
 
 	if err != nil {
-		sendMessageToUser("Error on removing group", msg.Event.Channel)
+		if sendMessage {
+			sendMessageToUser("Error on looking for group", msg.Event.Channel)
+		}
 		return false
 	} else if !found {
-		sendMessageToUser(fmt.Sprintf("No groups %s available", groupName), msg.Event.Channel)
+		if sendMessage {
+			sendMessageToUser(fmt.Sprintf("No group %s available", groupName), msg.Event.Channel)
+		}
 		return false
 	}
 
@@ -281,7 +285,7 @@ func handleRemoveGroupForUser(msg message) {
 	groups := strings.Split(msg.Event.Text, " ")
 	group := groups[len(groups)-1]
 
-	if !checkGroupForUserExists(group, msg) {
+	if !checkGroupForUserExists(group, msg, true) {
 		return
 	}
 
@@ -295,7 +299,7 @@ func handleRemoveGroupForUser(msg message) {
 }
 
 func handleRemoveEmojiFromGroup(emojiName string, groupName string, msg message) {
-	if !checkGroupForUserExists(groupName, msg) {
+	if !checkGroupForUserExists(groupName, msg, true) {
 		return
 	}
 
@@ -327,7 +331,7 @@ func handleRemoveEmojiFromGroup(emojiName string, groupName string, msg message)
 }
 
 func handleAddEmojiToGroup(emojiName string, groupName string, msg message) {
-	if !checkGroupForUserExists(groupName, msg) {
+	if !checkGroupForUserExists(groupName, msg, true) {
 		return
 	}
 
@@ -348,7 +352,7 @@ func handleCreateNewGroup(msg message) {
 	split := strings.Split(msg.Event.Text, " ")
 	group := split[len(split)-1]
 
-	if checkGroupForUserExists(group, msg) {
+	if checkGroupForUserExists(group, msg, false) {
 		sendMessageToUser("Group already created", msg.Event.Channel)
 		return
 	}
@@ -364,7 +368,7 @@ func handleListEmojisForGroup(msg message) {
 	split := strings.Split(msg.Event.Text, " ")
 	group := split[len(split)-1]
 
-	if !checkGroupForUserExists(group, msg) {
+	if !checkGroupForUserExists(group, msg, true) {
 		return
 	}
 
