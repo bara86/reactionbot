@@ -9,15 +9,17 @@ import (
 )
 
 const (
-	clientID           = "CLIENT_ID"
-	appURL             = "APP_URL"
-	clientSecret       = "CLIENT_SECRET"
-	slackTokenEnv      = "SLACK_TOKEN"
-	connectionPort     = "PORT"
-	slackOauthBotToken = "SLACK_OAUTH_BOT_TOKEN"
-	saveOnFile         = "SAVE_ON_FILE"
-	saveFileName       = "SAVE_FILE_NAME"
-	postgresDBURL      = "DATABASE_URL"
+	clientID              = "CLIENT_ID"
+	appURL                = "APP_URL"
+	clientSecret          = "CLIENT_SECRET"
+	slackTokenEnv         = "SLACK_TOKEN"
+	connectionPort        = "PORT"
+	slackOauthBotToken    = "SLACK_OAUTH_BOT_TOKEN"
+	slackOauthAccessToken = "SLACK_OAUTH_ACCESS_TOKEN"
+	saveOnFile            = "SAVE_ON_FILE"
+	saveFileName          = "SAVE_FILE_NAME"
+	postgresDBURL         = "DATABASE_URL"
+	botID                 = "BOT_ID"
 )
 
 func LoadEnvironmentVariables() error {
@@ -44,6 +46,8 @@ func checkEnvVariables() []string {
 		connectionPort,
 		slackOauthBotToken,
 		saveOnFile,
+		botID,
+		slackOauthAccessToken,
 	}
 	for _, envVariable := range checkedEnvVariables {
 		if _, ok := os.LookupEnv(envVariable); !ok {
@@ -60,6 +64,10 @@ func checkEnvVariables() []string {
 	}
 
 	return missingVariables
+}
+
+func GetOauthAccessToken() string {
+	return getEnvVariable(slackOauthAccessToken)
 }
 
 func GetSaveOnFile() (bool, error) {
@@ -96,6 +104,10 @@ func GetAppURL() string {
 
 func GetPostgresDBURL() string {
 	return getEnvVariable(postgresDBURL)
+}
+
+func GetBotID() string {
+	return getEnvVariable(botID)
 }
 
 func getEnvVariable(name string) string {

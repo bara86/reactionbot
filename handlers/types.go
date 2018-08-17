@@ -9,6 +9,13 @@ type addReactionActionUser struct {
 	Name string
 }
 
+type sendMessageToUserStruct struct {
+	Token   string `json:"token"`
+	Channel string `json:"channel"`
+	Text    string `json:"text"`
+	AsUser  bool   `json:"as_user"`
+}
+
 type addReactionAction struct {
 	ResponseURL string                   `json:"response_url"`
 	Channel     channel                  `json:"channel"`
@@ -23,10 +30,12 @@ type event struct {
 	Item    string
 	Ts      string
 	Channel string
+	Text    string `json:"text"`
 }
 
 type message struct {
 	Token     string
+	APIAppID  string `json:"api_app_id"`
 	Challenge string
 	Type      string
 	EventID   string `json:"event_id"`
@@ -51,7 +60,8 @@ type channel struct {
 }
 
 type messageType struct {
-	Type string
+	Token string
+	Type  string
 }
 
 type urlVerification struct {
@@ -66,4 +76,13 @@ type callbackID struct {
 type accessToken struct {
 	AccessToken string `json:"access_token"`
 	Scope       string `json:"scope"`
+}
+
+type postMessageResponseMessage struct {
+	BotID string `json:"bot_id"`
+}
+
+type postMessageResponse struct {
+	Ok      bool
+	Message postMessageResponseMessage
 }

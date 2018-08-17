@@ -27,6 +27,7 @@ func main() {
 		storage, err = storageonfile.SetUp()
 	} else {
 		storage, err = storageondb.SetUp()
+		storage.LoadEmojisList()
 	}
 
 	if err != nil {

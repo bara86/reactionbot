@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"reactionbot/commonstructure"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"reactionbot/environment"
@@ -17,10 +18,12 @@ import (
 )
 
 const (
-	slackEphemeralURL   = "https://slack.com/api/chat.postEphemeral"
-	slackAddReactionURL = "https://slack.com/api/reactions.add"
-	slackOauthAccessURL = "https://slack.com/api/oauth.access"
-	slackOauthURL       = "slack.com/oauth/authorize"
+	slackEphemeralURL       = "https://slack.com/api/chat.postEphemeral"
+	slackAddReactionURL     = "https://slack.com/api/reactions.add"
+	slackOauthAccessURL     = "https://slack.com/api/oauth.access"
+	slackOauthURL           = "slack.com/oauth/authorize"
+	slackChatPostMessageURL = "https://slack.com/api/chat.postMessage"
+	slackGetEmojisListURL   = "https://slack.com/api/emoji.list"
 
 	authorizeButton = `{
 		"token": "%v",
@@ -44,6 +47,16 @@ const (
 	}`
 
 	reactionsWriteScope = "reactions:write"
+
+	addEmojiRegex    = `(?m)add\s+:(\w+):\s+to\s+([\p{L}\d_]+)`
+	removeEmojiRegex = `(?m)remove\s+:(\w+):\s+from\s+([\p{L}\d_]+)`
+
+	helpMessage = "`list groups` - list your groups\n" +
+		"`list emojis groupName` - list the emojis for the given group _groupName_\n" +
+		"`create group groupName` - create a new group called _groupName_\n" +
+		"`remove group groupName` - delete the group called _groupName_ (if available)\n" +
+		"`add emoji to groupName` - add _emoji_ to your previously created group _groupName_\n" +
+		"`remove emoji from groupName` - remove _emoji_ from your group _groupName_\n"
 )
 
 var dataStorage commonstructure.Storage
@@ -51,14 +64,39 @@ var dataStorage commonstructure.Storage
 func StartServer(storage commonstructure.Storage) error {
 	dataStorage = storage
 
-	http.HandleFunc("/", handle)
+	if err := loadCustomEmojis(); err != nil {
+		return err
+	}
+
 	http.HandleFunc("/actions", handleActions)
 	http.HandleFunc("/oauth", handleOauth)
+	http.HandleFunc("/events", handleEvents)
 	return http.ListenAndServe(fmt.Sprintf(":%s", environment.GetConnectionPort()), nil)
 }
 
-func handle(w http.ResponseWriter, req *http.Request) {
+func loadCustomEmojis() error {
+	resp, err := http.PostForm(slackGetEmojisListURL,
+		url.Values{
+			"token": {environment.GetOauthAccessToken()},
+		})
 
+	if err != nil {
+		return err
+	}
+
+	var responseJSON map[string]interface{}
+	unmarshallData(resp.Body, &responseJSON)
+
+	emojis := responseJSON["emoji"].(map[string]interface{})
+	var emojisList []string
+	for k := range emojis {
+		emojisList = append(emojisList, k)
+	}
+
+	return dataStorage.AddCustomEmojis(emojisList)
+}
+
+func handleEvents(w http.ResponseWriter, req *http.Request) {
 	var messagetype messageType
 	reader := unmarshallData(req.Body, &messagetype)
 
@@ -72,7 +110,6 @@ func handle(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.Write([]byte("GnocchettiAlVapore"))
-
 }
 
 func unmarshallData(reader io.Reader, v interface{}) io.Reader {
@@ -100,11 +137,11 @@ func handleURLVerification(w http.ResponseWriter, reader io.Reader) {
 }
 
 func postToSlack(token string, url string, w io.Reader) (*http.Response, error) {
-	request, erro := http.NewRequest(http.MethodPost, url, w)
+	request, err := http.NewRequest(http.MethodPost, url, w)
 
-	if erro != nil {
+	if err != nil {
 		fmt.Println("Error creating request")
-		return &http.Response{}, erro
+		return nil, err
 	}
 
 	// Add Authorization token
@@ -116,15 +153,9 @@ func postToSlack(token string, url string, w io.Reader) (*http.Response, error) 
 
 	if clientError != nil {
 		fmt.Println("Errore dal client")
-	} else {
-		var clientRespData clientResponseData
-
-		unmarshallData(clientResponse.Body, &clientRespData)
-
-		if !clientRespData.Ok {
-			fmt.Println("Error send HTTP post request to Slack:", clientRespData.Err)
-		}
+		return nil, clientError
 	}
+
 	return clientResponse, clientError
 }
 
@@ -140,10 +171,224 @@ func handleEvent(data io.Reader) {
 	var msg message
 
 	unmarshallData(data, &msg)
+	handleMessage(msg)
+}
 
-	if msg.Event.Type == "message" {
-		go addReaction(environment.GetOauthToken(), "thumbsup", msg.Event.Ts, msg.Event.Channel)
+func sendMessageToUser(message string, channel string) {
+	messageToUser := sendMessageToUserStruct{
+		Token:   environment.GetSlackToken(),
+		Channel: channel,
+		Text:    message,
+		AsUser:  true,
 	}
+
+	marshalled, _ := json.Marshal(messageToUser)
+	stringBuffer := bytes.NewBuffer(marshalled)
+	req, err := postToSlack(environment.GetOauthToken(), slackChatPostMessageURL, stringBuffer)
+
+	var responseData clientResponseData
+	unmarshallData(req.Body, &responseData)
+
+	if !responseData.Ok {
+		fmt.Println("handleEvent error", responseData.Err)
+	}
+	if err != nil {
+		fmt.Println("Handle event error", err)
+	}
+}
+
+func parseRegex(text string, regex string) []string {
+	re := regexp.MustCompile(regex)
+
+	match := re.FindStringSubmatch(text)
+	if len(match) == 0 {
+		return match
+	}
+	return match[1:]
+}
+
+func sendHelpToUser(msg message) {
+	sendMessageToUser(helpMessage, msg.Event.Channel)
+}
+
+func handleMessage(msg message) {
+	if msg.Event.User == environment.GetBotID() {
+		return
+	}
+
+	if parseMessage(msg) {
+		return
+	}
+
+	sendHelpToUser(msg)
+}
+
+func parseMessage(msg message) bool {
+	text := msg.Event.Text
+
+	if text == "help" {
+		sendHelpToUser(msg)
+		return true
+	} else if strings.HasPrefix(text, "list groups") {
+		handleListGroups(msg)
+		return true
+	} else if strings.HasPrefix(text, "list emojis") {
+		handleListEmojisForGroup(msg)
+		return true
+	} else if strings.HasPrefix(text, "create group") {
+		handleCreateNewGroup(msg)
+		return true
+	} else if strings.HasPrefix(text, "remove group") {
+		handleRemoveGroupForUser(msg)
+		return true
+	} else if match := parseRegex(text, addEmojiRegex); len(match) > 0 {
+		handleAddEmojiToGroup(match[0], match[1], msg)
+		return true
+	} else if match := parseRegex(text, removeEmojiRegex); len(match) > 0 {
+		handleRemoveEmojiFromGroup(match[0], match[1], msg)
+		return true
+	}
+	return false
+}
+
+func checkGroupForUserExists(groupName string, msg message, sendMessage bool) bool {
+	found, err := dataStorage.LookupForUserGroup(msg.Event.User, groupName)
+
+	if err != nil {
+		if sendMessage {
+			sendMessageToUser("Error on looking for group", msg.Event.Channel)
+		}
+		return false
+	} else if !found {
+		if sendMessage {
+			sendMessageToUser(fmt.Sprintf("No group %s available", groupName), msg.Event.Channel)
+		}
+		return false
+	}
+
+	return true
+}
+
+func checkEmoji(emojiName string, msg message) bool {
+	found, err := dataStorage.LookupEmoji(emojiName)
+
+	if err != nil {
+		sendMessageToUser("Error find the emoji", msg.Event.Channel)
+		return false
+	} else if found == false {
+		sendMessageToUser("Wrong emoji", msg.Event.Channel)
+	}
+	return found
+}
+
+func handleRemoveGroupForUser(msg message) {
+	groups := strings.Split(msg.Event.Text, " ")
+	group := groups[len(groups)-1]
+
+	if !checkGroupForUserExists(group, msg, true) {
+		return
+	}
+
+	err := dataStorage.RemoveGroupForUser(msg.Event.User, group)
+	if err != nil {
+		sendMessageToUser("Unable to remove group", msg.Event.Channel)
+		return
+	}
+
+	sendMessageToUser("Group removed", msg.Event.Channel)
+}
+
+func handleRemoveEmojiFromGroup(emojiName string, groupName string, msg message) {
+	if !checkGroupForUserExists(groupName, msg, true) {
+		return
+	}
+
+	if !checkEmoji(emojiName, msg) {
+		return
+	}
+
+	emojisForUserForGroup := dataStorage.GetEmojisForUserForGroup(msg.Event.User, groupName)
+
+	found := false
+	for _, emoji := range emojisForUserForGroup {
+		if emoji == emojiName {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		sendMessageToUser("Emoji not in group", msg.Event.Channel)
+		return
+	}
+
+	if err := dataStorage.RemoveEmojiFromGroupForUser(emojiName, groupName, msg.Event.User); err != nil {
+		sendMessageToUser("Unable to remove emoji", msg.Event.Channel)
+		return
+	}
+
+	sendMessageToUser("Emoji removed from group", msg.Event.Channel)
+}
+
+func handleAddEmojiToGroup(emojiName string, groupName string, msg message) {
+	if !checkGroupForUserExists(groupName, msg, true) {
+		return
+	}
+
+	fmt.Println("user want to add emoji", emojiName)
+	if !checkEmoji(emojiName, msg) {
+		return
+	}
+
+	if err := dataStorage.AddEmojiForGroupForUser(emojiName, groupName, msg.Event.User); err != nil {
+		sendMessageToUser("Unable to save emoji for group", msg.Event.Channel)
+		return
+	}
+
+	sendMessageToUser("Emoji add to group", msg.Event.Channel)
+}
+
+func handleCreateNewGroup(msg message) {
+	split := strings.Split(msg.Event.Text, " ")
+	group := split[len(split)-1]
+
+	if checkGroupForUserExists(group, msg, false) {
+		sendMessageToUser("Group already created", msg.Event.Channel)
+		return
+	}
+
+	if err := dataStorage.AddGroupForUser(msg.Event.User, group); err != nil {
+		sendMessageToUser("Couldn't create group", msg.Event.Channel)
+	} else {
+		sendMessageToUser("Group created", msg.Event.Channel)
+	}
+}
+
+func handleListEmojisForGroup(msg message) {
+	split := strings.Split(msg.Event.Text, " ")
+	group := split[len(split)-1]
+
+	if !checkGroupForUserExists(group, msg, true) {
+		return
+	}
+
+	var emojis []string
+	for _, emojiName := range dataStorage.GetEmojisForUserForGroup(msg.Event.User, group) {
+		emojis = append(emojis, fmt.Sprintf(":%s:", emojiName))
+	}
+
+	if len(emojis) == 0 {
+		sendMessageToUser(fmt.Sprintf("No emojis for group %s", group), msg.Event.Channel)
+		return
+	}
+
+	sendMessageToUser(strings.Join(emojis, " "), msg.Event.Channel)
+}
+
+func handleListGroups(msg message) {
+	groupsList := dataStorage.GetGroupsForUser(msg.Event.User)
+
+	sendMessageToUser(strings.Join(groupsList, ", "), msg.Event.Channel)
 }
 
 func handleActions(w http.ResponseWriter, req *http.Request) {
@@ -172,7 +417,13 @@ func addReactionToMessage(payload *string) {
 
 		}
 	} else {
-		addReaction(token, "heart", info.Message.Timestamp, info.Channel.ID)
+		userGroups := dataStorage.GetGroupsForUser(info.User.ID)
+		if len(userGroups) == 0 {
+			return
+		}
+		for _, emoji := range dataStorage.GetEmojisForUserForGroup(info.User.ID, userGroups[0]) {
+			addReaction(token, emoji, info.Message.Timestamp, info.Channel.ID)
+		}
 	}
 
 }
