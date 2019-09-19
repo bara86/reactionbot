@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"reactionbot/storageonfile"
 
 	"reactionbot/commonstructure"
 	"reactionbot/environment"
@@ -18,17 +17,8 @@ func main() {
 
 	var storage commonstructure.Storage
 
-	saveOnFile, err := environment.GetSaveOnFile()
-	if err != nil {
-		panic(fmt.Sprintf("Wrong format for \"SaveOnFile\" env variable %v", err))
-	}
-
-	if saveOnFile {
-		storage, err = storageonfile.SetUp()
-	} else {
-		storage, err = storageondb.SetUp()
-		storage.LoadEmojisList()
-	}
+	storage, err := storageondb.SetUp()
+	storage.LoadEmojisList()
 
 	if err != nil {
 		panic(err)
