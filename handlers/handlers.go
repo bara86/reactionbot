@@ -388,6 +388,11 @@ func handleListEmojisForGroup(msg message) {
 func handleListGroups(msg message) {
 	groupsList := dataStorage.GetGroupsForUser(msg.Event.User)
 
+	if len(groupsList) == 0 {
+		sendMessageToUser("You don't have groups yet", msg.Event.Channel)
+		return
+	}
+
 	sendMessageToUser(strings.Join(groupsList, ", "), msg.Event.Channel)
 }
 
