@@ -216,6 +216,15 @@ func handleMessage(msg message) {
 		return
 	}
 
+	_, err := dataStorage.GetUserToken(msg.Event.User)
+
+	if err != nil {
+		if err = postEphemeralMessage(msg.Event.User, msg.Event.Channel); err != nil {
+			fmt.Println("Error to post ephemeral message to user", err)
+		}
+		return
+	}
+
 	if parseMessage(msg) {
 		return
 	}
