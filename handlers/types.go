@@ -77,12 +77,3 @@ type accessToken struct {
 	AccessToken string `json:"access_token"`
 	Scope       string `json:"scope"`
 }
-
-type postMessageResponseMessage struct {
-	BotID string `json:"bot_id"`
-}
-
-type postMessageResponse struct {
-	Ok      bool
-	Message postMessageResponseMessage
-}
