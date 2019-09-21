@@ -413,7 +413,7 @@ func addReactionToMessage(payload *string) {
 	token, err := dataStorage.GetUserToken(info.User.ID)
 
 	if err != nil {
-		if postEphemeralMessage(&info) != nil {
+		if postEphemeralMessage(info.User.ID, info.Channel.ID) != nil {
 
 		}
 	} else {
@@ -428,7 +428,7 @@ func addReactionToMessage(payload *string) {
 
 }
 
-func postEphemeralMessage(info *addReactionAction) error {
+func postEphemeralMessage(userID string, channelID string) error {
 	fmt.Println("Post ephemeral message")
 
 	url := url.URL{Path: slackOauthURL, Scheme: "https"}
@@ -441,12 +441,12 @@ func postEphemeralMessage(info *addReactionAction) error {
 	q.Add("state", uuid)
 	url.RawQuery = q.Encode()
 
-	err := dataStorage.AddUserToken(uuid, info.User.ID)
+	err := dataStorage.AddUserToken(uuid, userID)
 	if err != nil {
 		return err
 	}
 
-	jsonMsg := fmt.Sprintf(authorizeButton, environment.GetOauthToken(), info.Channel.ID, info.User.ID, url.String())
+	jsonMsg := fmt.Sprintf(authorizeButton, environment.GetOauthToken(), channelID, userID, url.String())
 	fmt.Println(jsonMsg)
 	buf := bytes.NewBufferString(jsonMsg)
 	_, err2 := postToSlack(environment.GetOauthToken(), slackEphemeralURL, buf)
