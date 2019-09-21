@@ -16,4 +16,7 @@ type Storage interface {
 	RemoveEmojiFromGroupForUser(emojiName string, groupName string, idUser string) error
 	LookupForUserGroup(userID string, groupName string) (bool, error)
 	RemoveGroupForUser(userID string, groupName string) error
+
+	AddTemporaryTokenForUser(temporaryToken string, id string) error
+	PopTemporaryToken(temporaryToken string) (string, error)
 }

@@ -19,9 +19,9 @@ type users struct {
 	Token string
 }
 
-type temporaryUserTokens struct {
+type temporaryusertokens struct {
 	Uuid   string
-	UserID string
+	Userid string
 }
 
 type UserStorageDB struct {
@@ -140,6 +140,10 @@ func (u *UserStorageDB) AddUserToken(id string, token string) error {
 	return u.db.Insert(&users{ID: id, Token: token})
 }
 
+func (u *UserStorageDB) AddTemporaryTokenForUser(temporaryToken string, id string) error {
+	return u.db.Insert(&temporaryusertokens{Uuid: temporaryToken, Userid: id})
+}
+
 func (u *UserStorageDB) LookupUserToken(id string) (bool, error) {
 	return u.lookup(&users{ID: id}, []string{"id"})
 }
@@ -163,6 +167,22 @@ func (u *UserStorageDB) GetUserToken(id string) (string, error) {
 		return "", err
 	}
 	return user.Token, nil
+}
+
+func (u *UserStorageDB) PopTemporaryToken(temporaryToken string) (string, error) {
+	temporary := temporaryusertokens{Uuid: temporaryToken}
+
+	if err := u.db.Select(&temporary); err != nil {
+		return "", err
+	}
+
+	err := u.remove(&temporary, []string{"uuid"})
+
+	if err != nil {
+		return "", err
+	}
+
+	return temporary.Userid, nil
 }
 
 func (u *UserStorageDB) PopUserToken(id string) (string, error) {

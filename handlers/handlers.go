@@ -441,7 +441,8 @@ func postEphemeralMessage(userID string, channelID string) error {
 	q.Add("state", uuid)
 	url.RawQuery = q.Encode()
 
-	err := dataStorage.AddUserToken(uuid, userID)
+
+	err := dataStorage.AddTemporaryTokenForUser(uuid, userID)
 	if err != nil {
 		return err
 	}
@@ -474,7 +475,7 @@ func handleOauth(w http.ResponseWriter, req *http.Request) {
 		})
 	fmt.Println(resp.Body)
 
-	userID, err := dataStorage.PopUserToken(state)
+	userID, err := dataStorage.PopTemporaryToken(state)
 	if err != nil {
 		fmt.Println(err)
 	}
